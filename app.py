@@ -1,3 +1,4 @@
+# sourcery skip: remove-redundant-if
 import streamlit as st
 import geocode
 import weather
