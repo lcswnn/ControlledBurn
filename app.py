@@ -151,9 +151,12 @@ if run and location:
     with st.expander("💨 12-Hour Wind Direction Forecast"):
         dirs = weather_data["hourly_wind_directions"]
         if dirs:
-            cols = st.columns(len(dirs))
-            for i, (col, d) in enumerate(zip(cols, dirs)):
-                col.metric(f"+{i}h", f"{d}°")
+            per_row = 6
+            for row_start in range(0, len(dirs), per_row):
+                row_dirs = dirs[row_start:row_start + per_row]
+                cols = st.columns(per_row)
+                for j, (col, d) in enumerate(zip(cols, row_dirs)):
+                    col.metric(f"+{row_start + j}h", f"{d}°")
         else:
             st.write("No hourly wind data available.")
 
