@@ -7,7 +7,7 @@ import nws
 st.set_page_config(
     page_title="Controlled Burn Checker",
     page_icon="🔥",
-    layout="centered"
+    layout="wide"
 )
 
 st.title("🔥 Controlled Burn Conditions Checker")
