@@ -17,7 +17,8 @@ def deg_to_compass(deg):
 st.set_page_config(
     page_title="Controlled Burn Checker",
     page_icon="🌿",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # ── Forest Park Forever–inspired styling ──────────────────────────────────────
@@ -170,12 +171,7 @@ st.markdown(
         font-size: 1.15rem !important;
     }
 
-    /* ── Sidebar always open — hide collapse button ───────────────────────── */
-    [data-testid="collapsedControl"],
-    [data-testid="stSidebarCollapseButton"],
-    button[kind="headerNoPadding"] {
-        display: none !important;
-    }
+    /* ── Sidebar width ────────────────────────────────────────────────────── */
     section[data-testid="stSidebar"] {
         min-width: 310px !important;
         max-width: 340px !important;
