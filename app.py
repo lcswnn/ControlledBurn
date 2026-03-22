@@ -196,6 +196,14 @@ st.markdown(
         padding: 1rem !important;
     }
 
+    /* ── Smaller metrics inside expanders ─────────────────────────────────── */
+    [data-testid="stExpander"] [data-testid="stMetricValue"] {
+        font-size: 1.2rem !important;
+    }
+    [data-testid="stExpander"] [data-testid="stMetric"] {
+        padding: 0.4rem !important;
+    }
+
     /* ── Caption ───────────────────────────────────────────────────────────── */
     .stCaption, [data-testid="stCaptionContainer"] {
         color: #8a8a7a !important;
@@ -379,9 +387,6 @@ if run and location:
             else:
                 st.error(f"**{label}** — {message}")
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # FULL-WIDTH EXPANDERS (below the two columns)
-    # ══════════════════════════════════════════════════════════════════════════
     st.divider()
 
     # Soil detail expander
