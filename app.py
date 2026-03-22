@@ -11,11 +11,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# ── Nature-themed styling ─────────────────────────────────────────────────────
+# ── Forest Park Forever–inspired styling ──────────────────────────────────────
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Source+Sans+Pro:wght@400;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap');
 
     /* ── Layout ────────────────────────────────────────────────────────────── */
     .block-container {
@@ -26,127 +26,183 @@ st.markdown(
 
     /* ── Background & base text ────────────────────────────────────────────── */
     .stApp {
-        background: linear-gradient(175deg, #1a2e1a 0%, #1e2d1e 40%, #26332a 100%);
+        background-color: #faf9f5;
     }
-    .stApp, .stApp p, .stApp li, .stApp span, .stApp label {
-        color: #d4cdb8 !important;
-        font-family: 'Source Sans Pro', sans-serif !important;
+    .stApp, .stApp p, .stApp li, .stApp span, .stApp label,
+    .stApp [data-testid="stMarkdownContainer"] {
+        color: #3b3b3b !important;
+        font-family: 'Open Sans', sans-serif !important;
+    }
+
+    /* ── Top accent bar ────────────────────────────────────────────────────── */
+    .stApp::before {
+        content: '';
+        display: block;
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #4caf50, #f7941d, #4caf50);
+        z-index: 9999;
     }
 
     /* ── Headings ──────────────────────────────────────────────────────────── */
     .stApp h1 {
-        font-family: 'Merriweather', serif !important;
-        color: #c8b96e !important;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        font-family: 'Lora', serif !important;
+        color: #2e7d32 !important;
     }
     .stApp h2, .stApp h3 {
-        font-family: 'Merriweather', serif !important;
-        color: #a8bf8a !important;
+        font-family: 'Lora', serif !important;
+        color: #3a7d34 !important;
     }
 
     /* ── Dividers ──────────────────────────────────────────────────────────── */
     .stApp hr {
-        border-color: #3d5a3d !important;
-        opacity: 0.6;
+        border-color: #c8dcc0 !important;
+        opacity: 0.8;
     }
 
     /* ── Input fields ──────────────────────────────────────────────────────── */
     .stTextInput > div > div > input {
-        background-color: #2a3b2a !important;
-        border: 1px solid #4a6b4a !important;
-        color: #d4cdb8 !important;
+        background-color: #ffffff !important;
+        border: 1px solid #b5cfb0 !important;
+        color: #3b3b3b !important;
         border-radius: 8px;
     }
     .stTextInput > div > div > input:focus {
-        border-color: #7a9f5a !important;
-        box-shadow: 0 0 6px rgba(122, 159, 90, 0.3);
+        border-color: #4caf50 !important;
+        box-shadow: 0 0 6px rgba(76, 175, 80, 0.25);
     }
 
     /* ── Slider ────────────────────────────────────────────────────────────── */
     .stSlider > div > div > div > div {
-        background-color: #4a6b4a !important;
+        background-color: #a5d6a7 !important;
     }
     .stSlider [role="slider"] {
-        background-color: #7a9f5a !important;
+        background-color: #4caf50 !important;
     }
 
-    /* ── Primary button ────────────────────────────────────────────────────── */
+    /* ── Primary button (orange) ───────────────────────────────────────────── */
     .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #5a7d3a, #4a6b2e) !important;
-        color: #f0ead6 !important;
-        border: 1px solid #6b8f4a !important;
+        background: linear-gradient(135deg, #f7941d, #e8850f) !important;
+        color: #ffffff !important;
+        border: none !important;
         border-radius: 8px;
-        font-family: 'Source Sans Pro', sans-serif !important;
+        font-family: 'Open Sans', sans-serif !important;
         font-weight: 600 !important;
         letter-spacing: 0.3px;
         transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(247, 148, 29, 0.3);
     }
     .stButton > button[kind="primary"]:hover {
-        background: linear-gradient(135deg, #6b8f4a, #5a7d3a) !important;
-        box-shadow: 0 2px 8px rgba(90, 125, 58, 0.4);
+        background: linear-gradient(135deg, #e8850f, #d4770a) !important;
+        box-shadow: 0 4px 12px rgba(247, 148, 29, 0.4);
         transform: translateY(-1px);
     }
 
-    /* ── Alert boxes (success / warning / error / info) ────────────────────── */
-    .stAlert [data-testid="stNotificationContentSuccess"] {
-        background-color: rgba(58, 107, 58, 0.25) !important;
-        border-left: 4px solid #5a8f3a !important;
-        color: #b8d4a0 !important;
+    /* ── Alert boxes ───────────────────────────────────────────────────────── */
+    /* Success — leafy green */
+    [data-testid="stAlert"] [role="alert"]:has([data-testid="stNotificationContentSuccess"]) {
+        background-color: #e8f5e9 !important;
+        border-left: 4px solid #4caf50 !important;
     }
-    .stAlert [data-testid="stNotificationContentWarning"] {
-        background-color: rgba(140, 120, 50, 0.2) !important;
-        border-left: 4px solid #b8a040 !important;
-        color: #d4c87a !important;
+    [data-testid="stNotificationContentSuccess"],
+    [data-testid="stNotificationContentSuccess"] p,
+    [data-testid="stNotificationContentSuccess"] span {
+        color: #2e5a2e !important;
     }
-    .stAlert [data-testid="stNotificationContentError"] {
-        background-color: rgba(140, 55, 45, 0.2) !important;
-        border-left: 4px solid #a84032 !important;
-        color: #d4a098 !important;
+    /* Warning — orange */
+    [data-testid="stAlert"] [role="alert"]:has([data-testid="stNotificationContentWarning"]) {
+        background-color: #fff8e1 !important;
+        border-left: 4px solid #f7941d !important;
     }
-    .stAlert [data-testid="stNotificationContentInfo"] {
-        background-color: rgba(60, 90, 110, 0.2) !important;
-        border-left: 4px solid #5a8faf !important;
-        color: #a0c4d4 !important;
+    [data-testid="stNotificationContentWarning"],
+    [data-testid="stNotificationContentWarning"] p,
+    [data-testid="stNotificationContentWarning"] span {
+        color: #5a4520 !important;
+    }
+    /* Error — warm red */
+    [data-testid="stAlert"] [role="alert"]:has([data-testid="stNotificationContentError"]) {
+        background-color: #fce4e4 !important;
+        border-left: 4px solid #d44a3a !important;
+    }
+    [data-testid="stNotificationContentError"],
+    [data-testid="stNotificationContentError"] p,
+    [data-testid="stNotificationContentError"] span {
+        color: #5a2020 !important;
+    }
+    /* Info — sky blue */
+    [data-testid="stAlert"] [role="alert"]:has([data-testid="stNotificationContentInfo"]) {
+        background-color: #e3f2fd !important;
+        border-left: 4px solid #42a5f5 !important;
+    }
+    [data-testid="stNotificationContentInfo"],
+    [data-testid="stNotificationContentInfo"] p,
+    [data-testid="stNotificationContentInfo"] span {
+        color: #1a4a6e !important;
     }
 
     /* ── Metric cards ──────────────────────────────────────────────────────── */
     [data-testid="stMetric"] {
-        background-color: rgba(42, 59, 42, 0.6);
-        border: 1px solid #3d5a3d;
+        background-color: #ffffff;
+        border: 1px solid #dce8d6;
         border-radius: 8px;
         padding: 0.75rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     [data-testid="stMetricLabel"] {
-        color: #8fa87a !important;
+        color: #6a8f5e !important;
+        font-weight: 600 !important;
     }
     [data-testid="stMetricValue"] {
-        color: #e0d9c4 !important;
-        font-family: 'Source Sans Pro', sans-serif !important;
+        color: #2e7d32 !important;
+        font-family: 'Open Sans', sans-serif !important;
+        font-weight: 700 !important;
     }
 
-    /* ── Expander ──────────────────────────────────────────────────────────── */
-    .streamlit-expanderHeader {
-        background-color: rgba(42, 59, 42, 0.4) !important;
-        border-radius: 8px;
-        color: #a8bf8a !important;
-        font-family: 'Source Sans Pro', sans-serif !important;
+    /* ── Expander — fixed arrow rendering ──────────────────────────────────── */
+    [data-testid="stExpander"] {
+        border: 1px solid #dce8d6 !important;
+        border-radius: 8px !important;
+        background-color: transparent !important;
     }
-    .streamlit-expanderContent {
-        background-color: rgba(30, 45, 30, 0.3) !important;
-        border: 1px solid #3d5a3d;
-        border-radius: 0 0 8px 8px;
+    [data-testid="stExpander"] summary {
+        background-color: #f0f7ec !important;
+        color: #3a7d34 !important;
+        font-family: 'Open Sans', sans-serif !important;
+        font-weight: 600 !important;
+        padding: 0.6rem 1rem !important;
+    }
+    [data-testid="stExpander"] summary p,
+    [data-testid="stExpander"] summary span {
+        color: #3a7d34 !important;
+    }
+    /* Arrow icon fix — don't let global color/font rules break the SVG */
+    [data-testid="stExpander"] summary svg {
+        fill: currentColor !important;
+        width: 1rem !important;
+        height: 1rem !important;
+        flex-shrink: 0 !important;
+    }
+    [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+        background-color: #fafcf8 !important;
+        padding: 1rem !important;
     }
 
     /* ── Caption ───────────────────────────────────────────────────────────── */
     .stCaption, [data-testid="stCaptionContainer"] {
-        color: #8a8470 !important;
+        color: #8a8a7a !important;
+    }
+
+    /* ── Spinner ───────────────────────────────────────────────────────────── */
+    .stSpinner > div > div {
+        border-top-color: #f7941d !important;
     }
 
     /* ── Scrollbar ─────────────────────────────────────────────────────────── */
     ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #1a2e1a; }
-    ::-webkit-scrollbar-thumb { background: #4a6b4a; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #5a7d3a; }
+    ::-webkit-scrollbar-track { background: #f5f5f0; }
+    ::-webkit-scrollbar-thumb { background: #a5d6a7; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4caf50; }
     </style>
     """,
     unsafe_allow_html=True,
