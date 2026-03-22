@@ -1,10 +1,12 @@
-#Location name -> lat/lon coordinates
+# Location name -> lat/lon coordinates
 from geopy.geocoders import Nominatim
 
+geolocator = Nominatim(user_agent="ControlledBurnApp/1.0", timeout=10)
+
 def geocode(location):
-    geolocator = Nominatim(user_agent="my_geopy_app")
-    if location:
-      location = geolocator.geocode(location)
-      return location.latitude, location.longitude
-    else:
+    if not location:
         return None, None
+    result = geolocator.geocode(location)
+    if result is None:
+        raise ValueError(f"Could not find coordinates for '{location}'")
+    return result.latitude, result.longitude

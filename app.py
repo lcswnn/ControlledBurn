@@ -401,7 +401,7 @@ st.divider()
 # ── Inputs (full width, above the two-column layout) ─────────────────────────
 col_loc, col_fuel = st.columns([2, 1])
 with col_loc:
-    location = st.text_input("Location", placeholder="e.g. Chicago, IL")
+    location = st.text_input("Location", placeholder="e.g. Forest Park, St. Louis, MO", use_container_width=True)
 with col_fuel:
     fuel_height = st.slider("Fuel Height (ft)", min_value=0.5, max_value=8.0,
                             value=2.0, step=0.5)
