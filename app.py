@@ -235,9 +235,9 @@ st.divider()
 # ── Inputs (full width, above the two-column layout) ─────────────────────────
 col_loc, col_fuel = st.columns([2, 1])
 with col_loc:
-    location = st.text_input("📍 Location", placeholder="e.g. Chicago, IL")
+    location = st.text_input("Location", placeholder="e.g. Chicago, IL")
 with col_fuel:
-    fuel_height = st.slider("🌿 Fuel Height (ft)", min_value=0.5, max_value=8.0,
+    fuel_height = st.slider("Fuel Height (ft)", min_value=0.5, max_value=8.0,
                             value=2.0, step=0.5)
 
 run = st.button("Check Conditions", type="primary", use_container_width=True)
@@ -293,13 +293,13 @@ if run and location:
     )
 
     core_conditions = [
-        ("🚨 Red Flag Warning",  condition_red_flag),
-        ("💨 Wind",              condition_wind),
-        ("💧 Humidity",          condition_humidity),
-        ("🌡 Temperature",       condition_temp),
-        ("🌱 Soil Moisture",     condition_soil),
-        ("☁️ Smoke Dispersal",   condition_smoke),
-        ("🌬 Frontal Passage",   condition_frontal),
+        ("Red Flag Warning",  condition_red_flag),
+        ("Wind",              condition_wind),
+        ("Humidity",          condition_humidity),
+        ("Temperature",       condition_temp),
+        ("Soil Moisture",     condition_soil),
+        ("Smoke Dispersal",   condition_smoke),
+        ("Frontal Passage",   condition_frontal),
     ]
 
     # ── Determine verdict ─────────────────────────────────────────────────────
@@ -321,7 +321,7 @@ if run and location:
 
     # ── LEFT COLUMN — Map + Verdict + Advisory ────────────────────────────────
     with left_col:
-        st.subheader(f"📍 {location}")
+        st.subheader(f"{location}")
         st.markdown(
             f'<span style="display:inline-block; background:#e8f5e9; color:#2e7d32; '
             f'padding:0.4rem 1rem; border-radius:6px; font-size:1.1rem; '
@@ -336,17 +336,17 @@ if run and location:
                color="#d44a3a")
 
         # Verdict banner
-        st.subheader("📋 Verdict")
+        st.subheader("Verdict")
         if verdict == "ok":
-            st.success("✅ BURN APPROVED — All conditions are met.")
+            st.success("BURN APPROVED — All conditions are met.")
         elif verdict == "caution":
-            st.warning("⚠️ PROCEED WITH CAUTION — Conditions are marginal.")
+            st.warning("PROCEED WITH CAUTION — Conditions are marginal.")
         else:
-            st.error("❌ BURN NOT RECOMMENDED — One or more conditions failed.")
+            st.error("BURN NOT RECOMMENDED — One or more conditions failed.")
 
         # 60/40 advisory
         st.divider()
-        st.subheader("📌 Advisory")
+        st.subheader("Advisory")
         if condition_6040[1] == "ok":
             st.info(f"**60/40 Rule** — {condition_6040[2]}")
         else:
@@ -354,20 +354,20 @@ if run and location:
 
     # ── RIGHT COLUMN — Weather + Breakdown + Expanders ────────────────────────
     with right_col:
-        st.subheader("🌤 Weather Snapshot")
+        st.subheader("Weather Snapshot")
         c1, c2, c3 = st.columns(3)
-        c1.metric("🌡 Temp", f"{weather_data['temperature_f']}°F")
-        c2.metric("💨 Wind", f"{weather_data['wind_speed_mph']} mph")
-        c3.metric("💧 Humidity", f"{weather_data['relative_humidity']}%")
+        c1.metric("Temp", f"{weather_data['temperature_f']}°F")
+        c2.metric("Wind", f"{weather_data['wind_speed_mph']} mph")
+        c3.metric("Humidity", f"{weather_data['relative_humidity']}%")
 
         c4, c5 = st.columns(2)
-        c4.metric("🌬 Gusts", f"{weather_data['wind_gusts_mph']} mph")
-        c5.metric("☁️ Mixing Ht", f"{weather_data['mixing_height_ft']:.0f} ft")
+        c4.metric("Gusts", f"{weather_data['wind_gusts_mph']} mph")
+        c5.metric("Mixing Ht", f"{weather_data['mixing_height_ft']:.0f} ft")
 
         st.divider()
 
         # Condition breakdown
-        st.subheader("🔍 Condition Breakdown")
+        st.subheader("Condition Breakdown")
 
         for label, cond in core_conditions:
             severity = cond[1]
@@ -385,7 +385,7 @@ if run and location:
     st.divider()
 
     # Soil detail expander
-    with st.expander("🌱 Soil Moisture Detail"):
+    with st.expander("Soil Moisture Detail"):
         s1, s2, s3, s4, s5 = st.columns(5)
         s1.metric("0–1 cm",  f"{weather_data['soil_moisture_0_to_1cm']:.3f}")
         s2.metric("1–3 cm",  f"{weather_data['soil_moisture_1_to_3cm']:.3f}")
@@ -394,7 +394,7 @@ if run and location:
         s5.metric("27–81 cm", f"{weather_data['soil_moisture_27_to_81cm']:.3f}")
 
     # Wind forecast expander
-    with st.expander("💨 12-Hour Wind Direction Forecast"):
+    with st.expander("12-Hour Wind Direction Forecast"):
         dirs = weather_data["hourly_wind_directions"]
         if dirs:
             cols = st.columns(len(dirs))
