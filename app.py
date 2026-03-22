@@ -11,15 +11,142 @@ st.set_page_config(
     layout="wide"
 )
 
-# ── Custom width constraint ───────────────────────────────────────────────────
+# ── Nature-themed styling ─────────────────────────────────────────────────────
 st.markdown(
     """
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Source+Sans+Pro:wght@400;600&display=swap');
+
+    /* ── Layout ────────────────────────────────────────────────────────────── */
     .block-container {
         max-width: 1100px;
         padding-left: 2rem;
         padding-right: 2rem;
     }
+
+    /* ── Background & base text ────────────────────────────────────────────── */
+    .stApp {
+        background: linear-gradient(175deg, #1a2e1a 0%, #1e2d1e 40%, #26332a 100%);
+    }
+    .stApp, .stApp p, .stApp li, .stApp span, .stApp label {
+        color: #d4cdb8 !important;
+        font-family: 'Source Sans Pro', sans-serif !important;
+    }
+
+    /* ── Headings ──────────────────────────────────────────────────────────── */
+    .stApp h1 {
+        font-family: 'Merriweather', serif !important;
+        color: #c8b96e !important;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+    .stApp h2, .stApp h3 {
+        font-family: 'Merriweather', serif !important;
+        color: #a8bf8a !important;
+    }
+
+    /* ── Dividers ──────────────────────────────────────────────────────────── */
+    .stApp hr {
+        border-color: #3d5a3d !important;
+        opacity: 0.6;
+    }
+
+    /* ── Input fields ──────────────────────────────────────────────────────── */
+    .stTextInput > div > div > input {
+        background-color: #2a3b2a !important;
+        border: 1px solid #4a6b4a !important;
+        color: #d4cdb8 !important;
+        border-radius: 8px;
+    }
+    .stTextInput > div > div > input:focus {
+        border-color: #7a9f5a !important;
+        box-shadow: 0 0 6px rgba(122, 159, 90, 0.3);
+    }
+
+    /* ── Slider ────────────────────────────────────────────────────────────── */
+    .stSlider > div > div > div > div {
+        background-color: #4a6b4a !important;
+    }
+    .stSlider [role="slider"] {
+        background-color: #7a9f5a !important;
+    }
+
+    /* ── Primary button ────────────────────────────────────────────────────── */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #5a7d3a, #4a6b2e) !important;
+        color: #f0ead6 !important;
+        border: 1px solid #6b8f4a !important;
+        border-radius: 8px;
+        font-family: 'Source Sans Pro', sans-serif !important;
+        font-weight: 600 !important;
+        letter-spacing: 0.3px;
+        transition: all 0.2s ease;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #6b8f4a, #5a7d3a) !important;
+        box-shadow: 0 2px 8px rgba(90, 125, 58, 0.4);
+        transform: translateY(-1px);
+    }
+
+    /* ── Alert boxes (success / warning / error / info) ────────────────────── */
+    .stAlert [data-testid="stNotificationContentSuccess"] {
+        background-color: rgba(58, 107, 58, 0.25) !important;
+        border-left: 4px solid #5a8f3a !important;
+        color: #b8d4a0 !important;
+    }
+    .stAlert [data-testid="stNotificationContentWarning"] {
+        background-color: rgba(140, 120, 50, 0.2) !important;
+        border-left: 4px solid #b8a040 !important;
+        color: #d4c87a !important;
+    }
+    .stAlert [data-testid="stNotificationContentError"] {
+        background-color: rgba(140, 55, 45, 0.2) !important;
+        border-left: 4px solid #a84032 !important;
+        color: #d4a098 !important;
+    }
+    .stAlert [data-testid="stNotificationContentInfo"] {
+        background-color: rgba(60, 90, 110, 0.2) !important;
+        border-left: 4px solid #5a8faf !important;
+        color: #a0c4d4 !important;
+    }
+
+    /* ── Metric cards ──────────────────────────────────────────────────────── */
+    [data-testid="stMetric"] {
+        background-color: rgba(42, 59, 42, 0.6);
+        border: 1px solid #3d5a3d;
+        border-radius: 8px;
+        padding: 0.75rem;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #8fa87a !important;
+    }
+    [data-testid="stMetricValue"] {
+        color: #e0d9c4 !important;
+        font-family: 'Source Sans Pro', sans-serif !important;
+    }
+
+    /* ── Expander ──────────────────────────────────────────────────────────── */
+    .streamlit-expanderHeader {
+        background-color: rgba(42, 59, 42, 0.4) !important;
+        border-radius: 8px;
+        color: #a8bf8a !important;
+        font-family: 'Source Sans Pro', sans-serif !important;
+    }
+    .streamlit-expanderContent {
+        background-color: rgba(30, 45, 30, 0.3) !important;
+        border: 1px solid #3d5a3d;
+        border-radius: 0 0 8px 8px;
+    }
+
+    /* ── Caption ───────────────────────────────────────────────────────────── */
+    .stCaption, [data-testid="stCaptionContainer"] {
+        color: #8a8470 !important;
+    }
+
+    /* ── Scrollbar ─────────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #1a2e1a; }
+    ::-webkit-scrollbar-thumb { background: #4a6b4a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #5a7d3a; }
     </style>
     """,
     unsafe_allow_html=True,
