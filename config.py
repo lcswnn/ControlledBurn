@@ -1,0 +1,1 @@
+# Threshold constants for controlled burn conditions
