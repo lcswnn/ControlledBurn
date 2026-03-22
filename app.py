@@ -28,7 +28,7 @@ st.markdown(
     .stApp {
         background-color: #faf9f5;
     }
-    .stApp, .stApp p, .stApp li, .stApp span, .stApp label,
+    .stApp, .stApp p, .stApp li, .stApp span:not([data-testid="stIconMaterial"]), .stApp label,
     .stApp [data-testid="stMarkdownContainer"] {
         color: #3b3b3b !important;
         font-family: 'Open Sans', sans-serif !important;
@@ -183,6 +183,14 @@ st.markdown(
         height: 1rem !important;
         flex-shrink: 0 !important;
     }
+    /* Preserve Material Icons font for expander arrow glyphs */
+    [data-testid="stExpander"] summary span[data-testid="stIconMaterial"],
+    [data-testid="stExpander"] summary .material-symbols-rounded,
+    [data-testid="stExpander"] summary i {
+        font-family: 'Material Symbols Rounded', sans-serif !important;
+        font-size: 1.25rem !important;
+        color: #3a7d34 !important;
+    }
     [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
         background-color: #fafcf8 !important;
         padding: 1rem !important;
@@ -302,11 +310,19 @@ if run and location:
 
     # ── LEFT COLUMN — Map + Verdict + Advisory ────────────────────────────────
     with left_col:
-        st.subheader(f"📍 {location}  `{lat:.4f}, {lon:.4f}`")
+        st.subheader(f"📍 {location}")
+        st.markdown(
+            f'<span style="display:inline-block; background:#e8f5e9; color:#2e7d32; '
+            f'padding:0.25rem 0.75rem; border-radius:6px; font-size:0.85rem; '
+            f'font-family:monospace; border:1px solid #c8e6c9;">'
+            f'{lat:.4f}, {lon:.4f}</span>',
+            unsafe_allow_html=True,
+        )
 
-        # Map centered on the location
+        # Map centered on the location (light style)
         map_df = pd.DataFrame({"lat": [lat], "lon": [lon]})
-        st.map(map_df, zoom=11, use_container_width=True)
+        st.map(map_df, zoom=11, use_container_width=True,
+               color="#d44a3a")
 
         # Verdict banner
         st.subheader("📋 Verdict")
