@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 import geocode
 import weather
 import conditions
@@ -29,17 +30,15 @@ st.caption("Enter a location and fuel height to assess whether conditions are sa
 
 st.divider()
 
-# ── Two-column layout ────────────────────────────────────────────────────────
-left_col, right_col = st.columns([1, 1], gap="large")
-
-# ══════════════════════════════════════════════════════════════════════════════
-# LEFT COLUMN — Inputs + Verdict + Advisory
-# ══════════════════════════════════════════════════════════════════════════════
-with left_col:
+# ── Inputs (full width, above the two-column layout) ─────────────────────────
+col_loc, col_fuel = st.columns([2, 1])
+with col_loc:
     location = st.text_input("📍 Location", placeholder="e.g. Chicago, IL")
+with col_fuel:
     fuel_height = st.slider("🌿 Fuel Height (ft)", min_value=0.5, max_value=8.0,
                             value=2.0, step=0.5)
-    run = st.button("Check Conditions", type="primary", use_container_width=True)
+
+run = st.button("Check Conditions", type="primary", use_container_width=True)
 
 # ── Main logic ────────────────────────────────────────────────────────────────
 if run and location:
@@ -111,13 +110,22 @@ if run and location:
     else:
         verdict = "ok"
 
+    st.divider()
+
     # ══════════════════════════════════════════════════════════════════════════
-    # LEFT COLUMN — Verdict + Advisory (continued)
+    # TWO-COLUMN RESULTS LAYOUT
     # ══════════════════════════════════════════════════════════════════════════
+    left_col, right_col = st.columns([1, 1], gap="large")
+
+    # ── LEFT COLUMN — Map + Verdict + Advisory ────────────────────────────────
     with left_col:
-        st.divider()
         st.subheader(f"📍 {location}  `{lat:.4f}, {lon:.4f}`")
 
+        # Map centered on the location
+        map_df = pd.DataFrame({"lat": [lat], "lon": [lon]})
+        st.map(map_df, zoom=11, use_container_width=True)
+
+        # Verdict banner
         st.subheader("📋 Verdict")
         if verdict == "ok":
             st.success("✅ BURN APPROVED — All conditions are met.")
@@ -126,7 +134,7 @@ if run and location:
         else:
             st.error("❌ BURN NOT RECOMMENDED — One or more conditions failed.")
 
-        # ── 60/40 advisory ────────────────────────────────────────────────────
+        # 60/40 advisory
         st.divider()
         st.subheader("📌 Advisory")
         if condition_6040[1] == "ok":
@@ -134,9 +142,7 @@ if run and location:
         else:
             st.warning(f"**60/40 Rule (Advisory)** — {condition_6040[2]}")
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # RIGHT COLUMN — Weather data + Condition breakdown + Expanders
-    # ══════════════════════════════════════════════════════════════════════════
+    # ── RIGHT COLUMN — Weather + Breakdown + Expanders ────────────────────────
     with right_col:
         st.subheader("🌤 Weather Snapshot")
         c1, c2, c3 = st.columns(3)
@@ -150,7 +156,7 @@ if run and location:
 
         st.divider()
 
-        # ── Condition breakdown ───────────────────────────────────────────────
+        # Condition breakdown
         st.subheader("🔍 Condition Breakdown")
 
         for label, cond in core_conditions:
@@ -163,7 +169,7 @@ if run and location:
             else:
                 st.error(f"**{label}** — {message}")
 
-        # ── Soil detail expander ──────────────────────────────────────────────
+        # Soil detail expander
         with st.expander("🌱 Soil Moisture Detail"):
             s1, s2, s3 = st.columns(3)
             s1.metric("0–1 cm",  f"{weather_data['soil_moisture_0_to_1cm']:.3f}")
@@ -174,7 +180,7 @@ if run and location:
             s4.metric("9–27 cm",  f"{weather_data['soil_moisture_9_to_27cm']:.3f}")
             s5.metric("27–81 cm", f"{weather_data['soil_moisture_27_to_81cm']:.3f}")
 
-        # ── Wind forecast expander ────────────────────────────────────────────
+        # Wind forecast expander
         with st.expander("💨 12-Hour Wind Direction Forecast"):
             dirs = weather_data["hourly_wind_directions"]
             if dirs:
