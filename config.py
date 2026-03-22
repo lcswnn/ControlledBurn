@@ -1,1 +1,45 @@
-# Threshold constants for controlled burn conditions
+# controlled burn constatnts we have to check against.
+
+#wind
+WIND_SPEED_MIN_MPH = 4
+WIND_SPEED_MAX_MPH = 15
+WIND_CALM_THRESHOLD_MPH = 3
+WIND_GUST_MAX_RATIO = 1.5
+WIND_DIRECTION_SHIFT_MAX_DEG = 45
+
+#humidity
+RH_MIN_PCT = 30
+RH_MAX_PCT = 50
+RH_DANGER_LOW_PCT = 25
+
+#fuel-height adjusted thresholds
+RH_MIN_SHORT_FUEL = 30
+RH_MAX_SHORT_FUEL = 60
+RH_MIN_TALL_FUEL = 45
+RH_MAX_TALL_FUEL = 65
+
+#temperature
+TEMP_MAX_F = 80
+TEMP_MIN_SHORT_FUEL_F = 32
+TEMP_MAX_SHORT_FUEL_F = 80
+TEMP_MIN_TALL_FUEL_F = 25
+TEMP_MAX_TALL_FUEL_F = 80
+
+#60:40 rule (conservative guideline for less experienced burners)
+#temp < 60 degrees F and RH > 40% AND wind 5-15 mph
+RULE_6040_TEMP_MAX_F = 60
+RULE_6040_RH_MIN_PCT = 40
+
+#soil
+SOIL_MOISTURE_MIN = 0.20
+SOIL_MOISTURE_IDEAL = 0.35
+
+#smoke dispersal
+MIXING_HEIGHT_MIN_FT = 1500
+MIXING_HEIGHT_MAX_FT = 2200
+TRANSPORT_WIND_MIN_MPH = 10
+
+#frontal passage
+FRONTAL_PASSAGE_WINDOW_HRS = 12
+
+#red flag warning via NWS API

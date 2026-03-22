@@ -2,6 +2,7 @@ import requests
 from datetime import datetime
 
 def get_weather(lat, lon):
+    # sourcery skip: assign-if-exp, extract-method, introduce-default-else
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": lat,
