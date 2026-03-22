@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime
 
-def get_weather(lat, lon):
+def get_weather(lat, lon):  # sourcery skip: extract-method
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
     params = {
         "latitude": lat,
@@ -21,7 +21,9 @@ def get_weather(lat, lon):
             "boundary_layer_height",   # ← NEW: mixing height proxy (meters)
             "soil_moisture_0_to_1cm",
             "soil_moisture_1_to_3cm",
-            "soil_moisture_3_to_9cm"
+            "soil_moisture_3_to_9cm",
+            "soil_moisture_9_to_27cm",
+            "soil_moisture_27_to_81cm"
         ],
         "past_days": 2,
         "wind_speed_unit": "mph",
@@ -58,6 +60,8 @@ def get_weather(lat, lon):
                 "soil_moisture_0_to_1cm": hourly["soil_moisture_0_to_1cm"][hour_index],
                 "soil_moisture_1_to_3cm": hourly["soil_moisture_1_to_3cm"][hour_index],
                 "soil_moisture_3_to_9cm": hourly["soil_moisture_3_to_9cm"][hour_index],
+                "soil_moisture_9_to_27cm": hourly["soil_moisture_9_to_27cm"][hour_index],
+                "soil_moisture_27_to_81cm": hourly["soil_moisture_27_to_81cm"][hour_index]
             }
 
             # Sum precipitation over past 48 hours
@@ -85,6 +89,8 @@ def get_weather(lat, lon):
             "soil_moisture_0_to_1cm": soil.get("soil_moisture_0_to_1cm"),
             "soil_moisture_1_to_3cm": soil.get("soil_moisture_1_to_3cm"),
             "soil_moisture_3_to_9cm": soil.get("soil_moisture_3_to_9cm"),
+            "soil_moisture_9_to_27cm": soil.get("soil_moisture_9_to_27cm"),
+            "soil_moisture_27_to_81cm": soil.get("soil_moisture_27_to_81cm"),
             "precip_48h_in": precip_48h,
             "mixing_height_ft": mixing_height_ft,
             "hourly_wind_directions": hourly_wind_directions,
@@ -92,3 +98,4 @@ def get_weather(lat, lon):
 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching data: {e}")
+        
