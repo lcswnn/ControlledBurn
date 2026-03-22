@@ -7,6 +7,7 @@ import nws
 
 st.set_page_config(
     page_title="Controlled Burn Checker",
+    page_icon="🌿",
     layout="wide"
 )
 
@@ -205,6 +206,17 @@ st.markdown(
         border-top-color: #f7941d !important;
     }
 
+    /* ── Map outline ──────────────────────────────────────────────────────── */
+    [data-testid="stDeckGlJsonChart"] iframe,
+    [data-testid="stDeckGlJsonChart"],
+    .stDeckGlJsonChart,
+    [data-testid="stMap"] {
+        border: 2px solid #b5cfb0 !important;
+        border-radius: 10px !important;
+        overflow: hidden !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
     /* ── Scrollbar ─────────────────────────────────────────────────────────── */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: #f5f5f0; }
@@ -312,8 +324,8 @@ if run and location:
         st.subheader(f"📍 {location}")
         st.markdown(
             f'<span style="display:inline-block; background:#e8f5e9; color:#2e7d32; '
-            f'padding:0.25rem 0.75rem; border-radius:6px; font-size:0.85rem; '
-            f'font-family:monospace; border:1px solid #c8e6c9;">'
+            f'padding:0.4rem 1rem; border-radius:6px; font-size:1.1rem; '
+            f'font-family:monospace; font-weight:600; border:1px solid #c8e6c9;">'
             f'{lat:.4f}, {lon:.4f}</span>',
             unsafe_allow_html=True,
         )
@@ -367,29 +379,29 @@ if run and location:
             else:
                 st.error(f"**{label}** — {message}")
 
-        # Soil detail expander
-        with st.expander("🌱 Soil Moisture Detail"):
-            s1, s2, s3 = st.columns(3)
-            s1.metric("0–1 cm",  f"{weather_data['soil_moisture_0_to_1cm']:.3f}")
-            s2.metric("1–3 cm",  f"{weather_data['soil_moisture_1_to_3cm']:.3f}")
-            s3.metric("3–9 cm",  f"{weather_data['soil_moisture_3_to_9cm']:.3f}")
+    # ══════════════════════════════════════════════════════════════════════════
+    # FULL-WIDTH EXPANDERS (below the two columns)
+    # ══════════════════════════════════════════════════════════════════════════
+    st.divider()
 
-            s4, s5 = st.columns(2)
-            s4.metric("9–27 cm",  f"{weather_data['soil_moisture_9_to_27cm']:.3f}")
-            s5.metric("27–81 cm", f"{weather_data['soil_moisture_27_to_81cm']:.3f}")
+    # Soil detail expander
+    with st.expander("🌱 Soil Moisture Detail"):
+        s1, s2, s3, s4, s5 = st.columns(5)
+        s1.metric("0–1 cm",  f"{weather_data['soil_moisture_0_to_1cm']:.3f}")
+        s2.metric("1–3 cm",  f"{weather_data['soil_moisture_1_to_3cm']:.3f}")
+        s3.metric("3–9 cm",  f"{weather_data['soil_moisture_3_to_9cm']:.3f}")
+        s4.metric("9–27 cm",  f"{weather_data['soil_moisture_9_to_27cm']:.3f}")
+        s5.metric("27–81 cm", f"{weather_data['soil_moisture_27_to_81cm']:.3f}")
 
-        # Wind forecast expander
-        with st.expander("💨 12-Hour Wind Direction Forecast"):
-            dirs = weather_data["hourly_wind_directions"]
-            if dirs:
-                per_row = 6
-                for row_start in range(0, len(dirs), per_row):
-                    row_dirs = dirs[row_start:row_start + per_row]
-                    cols = st.columns(per_row)
-                    for j, (col, d) in enumerate(zip(cols, row_dirs)):
-                        col.metric(f"+{row_start + j}h", f"{d}°")
-            else:
-                st.write("No hourly wind data available.")
+    # Wind forecast expander
+    with st.expander("💨 12-Hour Wind Direction Forecast"):
+        dirs = weather_data["hourly_wind_directions"]
+        if dirs:
+            cols = st.columns(len(dirs))
+            for i, (col, d) in enumerate(zip(cols, dirs)):
+                col.metric(f"+{i}h", f"{d}°")
+        else:
+            st.write("No hourly wind data available.")
 
 elif run and not location:
     st.warning("Please enter a location before checking conditions.")
