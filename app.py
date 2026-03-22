@@ -5,6 +5,15 @@ import weather
 import conditions
 import nws
 
+
+def deg_to_compass(deg):
+    """Convert wind direction in degrees to a compass label."""
+    if deg is None:
+        return "—"
+    dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+    return dirs[round(deg % 360 / 22.5) % 16]
+
 st.set_page_config(
     page_title="Controlled Burn Checker",
     page_icon="🌿",
@@ -238,6 +247,146 @@ st.markdown(
 st.title("Controlled Burn Conditions Checker")
 st.caption("Enter a location and fuel height to assess whether conditions are safe for a controlled burn.")
 
+# ── Sidebar — Help & How It Works ─────────────────────────────────────────────
+with st.sidebar:
+    st.header("How It Works")
+    st.markdown(
+        """
+        Enter a location and fuel height, then press **Check Conditions**.
+        The app fetches real-time weather data, runs it through a series of
+        threshold checks based on established controlled-burn guidelines,
+        and gives you a **Verdict**:
+
+        - **Burn Approved** — all conditions within safe ranges
+        - **Proceed with Caution** — one or more conditions are marginal
+        - **Burn Not Recommended** — one or more conditions failed
+        """
+    )
+
+    st.divider()
+    st.header("Conditions Checked")
+
+    with st.expander("Red Flag Warning"):
+        st.markdown(
+            """
+            Queries the **National Weather Service (NWS) Alerts API** for
+            active Red Flag Warnings or Fire Weather Watches at your
+            location. Any active alert is an automatic **fail** — no burn
+            should be conducted.
+            """
+        )
+
+    with st.expander("Wind"):
+        st.markdown(
+            """
+            Checks sustained wind speed, gust-to-speed ratio, and recent
+            wind direction shifts.
+
+            - **Speed:** must be between 4–15 mph
+            - **Gust ratio:** gusts ÷ sustained speed must be ≤ 1.5×
+            - **Direction shift:** ≤ 45° change from the previous hour
+
+            *Caution* triggers when speed is within 2 mph of the upper
+            limit or the gust ratio exceeds 80% of the threshold.
+            """
+        )
+
+    with st.expander("Humidity"):
+        st.markdown(
+            """
+            Relative humidity thresholds depend on **fuel height**:
+
+            - **Short fuel (≤ 2 ft):** 30%–60% RH
+            - **Tall fuel (> 2 ft):** 45%–65% RH
+
+            Too dry means rapid, uncontrollable fire spread. Too humid
+            means the fire won't carry. *Caution* when within 5% of
+            either boundary.
+            """
+        )
+
+    with st.expander("Temperature"):
+        st.markdown(
+            """
+            Temperature thresholds also depend on fuel height:
+
+            - **Short fuel:** 32°F–80°F
+            - **Tall fuel:** 25°F–80°F
+
+            Extremely cold temperatures reduce fire behavior
+            predictability; very hot temperatures increase volatility.
+            *Caution* within 5°F of either limit.
+            """
+        )
+
+    with st.expander("Soil Moisture"):
+        st.markdown(
+            """
+            Checks volumetric soil moisture across 5 depth layers
+            (0–1 cm through 27–81 cm) from Open-Meteo.
+
+            - **Acceptable range:** 0.20–0.35 m³/m³
+            - Too dry → fire can burn into organic soil layers
+            - Too wet → poor burn conditions
+            """
+        )
+
+    with st.expander("Smoke Dispersal"):
+        st.markdown(
+            """
+            Uses **mixing height** (the altitude to which pollutants mix)
+            and **transport wind** to evaluate whether smoke will disperse
+            safely.
+
+            - **Mixing height:** 1,650–10,000 ft
+            - **Transport wind:** 10–20 mph
+
+            Low mixing height traps smoke near the surface; very high
+            values may indicate unusual instability.
+            """
+        )
+
+    with st.expander("Frontal Passage"):
+        st.markdown(
+            """
+            Scans the 12-hour wind direction forecast for shifts greater
+            than 45°. A large shift can indicate an approaching weather
+            front, which brings unpredictable wind changes mid-burn.
+            """
+        )
+
+    with st.expander("60/40 Rule (Advisory)"):
+        st.markdown(
+            """
+            A conservative guideline especially useful for less experienced
+            burners:
+
+            - Temperature ≤ 60°F
+            - Relative humidity ≥ 40%
+            - Wind 5–15 mph
+
+            This is **advisory only** — it won't block the verdict but
+            flags when conditions fall outside the most conservative
+            comfort zone.
+            """
+        )
+
+    st.divider()
+    st.header("Data Sources")
+    st.markdown(
+        """
+        - **Weather data:** [Open-Meteo API](https://open-meteo.com/)
+        (temperature, wind, humidity, soil moisture, mixing height)
+        - **Red Flag Warnings:** [NWS Alerts API](https://api.weather.gov/)
+        - **Geocoding:** OpenStreetMap / Nominatim
+        """
+    )
+
+    st.divider()
+    st.caption("⚠️ This tool is for informational purposes only. Always "
+               "consult local fire authorities and obtain required permits "
+               "before conducting a controlled burn.")
+
 st.divider()
 
 # ── Inputs (full width, above the two-column layout) ─────────────────────────
@@ -368,9 +517,11 @@ if run and location:
         c2.metric("Wind", f"{weather_data['wind_speed_mph']} mph")
         c3.metric("Humidity", f"{weather_data['relative_humidity']}%")
 
-        c4, c5 = st.columns(2)
+        c4, c5, c6 = st.columns(3)
         c4.metric("Gusts", f"{weather_data['wind_gusts_mph']} mph")
         c5.metric("Mixing Ht", f"{weather_data['mixing_height_ft']:.0f} ft")
+        wind_dir = weather_data.get("wind_direction_deg")
+        c6.metric("Wind Dir", f"{deg_to_compass(wind_dir)} ({wind_dir}°)" if wind_dir is not None else "—")
 
         st.divider()
 
@@ -402,9 +553,15 @@ if run and location:
     with st.expander("12-Hour Wind Direction Forecast"):
         dirs = weather_data["hourly_wind_directions"]
         if dirs:
+            # Current direction reference
+            current_dir = weather_data.get("wind_direction_deg")
+            if current_dir is not None:
+                st.markdown(
+                    f"**Current wind:** {deg_to_compass(current_dir)} ({current_dir}°)"
+                )
             cols = st.columns(len(dirs))
             for i, (col, d) in enumerate(zip(cols, dirs)):
-                col.metric(f"+{i}h", f"{d}°")
+                col.metric(f"+{i}h", f"{d}°", help=deg_to_compass(d))
         else:
             st.write("No hourly wind data available.")
 
