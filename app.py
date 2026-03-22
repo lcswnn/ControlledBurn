@@ -10,6 +10,18 @@ st.set_page_config(
     page_icon="🔥",
     layout="wide"
 )
+st.markdown(
+    """
+    <style>
+    .block-container {
+        max-width: 900px;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.title("🔥 Controlled Burn Conditions Checker")
 st.caption("Enter a location and fuel height to assess whether conditions are safe for a controlled burn.")
