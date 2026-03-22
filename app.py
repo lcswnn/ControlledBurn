@@ -415,7 +415,17 @@ if run and location:
             lat, lon = geocode.geocode(location)
             weather_data = weather.get_weather(lat, lon)
         except Exception as e:
-            st.error(f"Could not retrieve data for '{location}': {e}")
+            error_msg = str(e)
+            if "429" in error_msg:
+                st.error(
+                    "⏳ **Rate limit reached** — The weather data provider "
+                    "(Open-Meteo) has temporarily blocked requests due to too "
+                    "many recent calls. Please wait **60 seconds** and try again. "
+                    "Open-Meteo's free tier allows ~10,000 requests/day but "
+                    "throttles rapid bursts."
+                )
+            else:
+                st.error(f"Could not retrieve data for '{location}': {e}")
             st.stop()
 
     if weather_data is None:
