@@ -155,17 +155,30 @@ st.markdown(
         background-color: #ffffff;
         border: 1px solid #dce8d6;
         border-radius: 8px;
-        padding: 0.75rem;
+        padding: 0.5rem;
         box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
     [data-testid="stMetricLabel"] {
         color: #6a8f5e !important;
         font-weight: 600 !important;
+        font-size: 0.78rem !important;
     }
     [data-testid="stMetricValue"] {
         color: #2e7d32 !important;
         font-family: 'Open Sans', sans-serif !important;
         font-weight: 700 !important;
+        font-size: 1.15rem !important;
+    }
+
+    /* ── Sidebar always open — hide collapse button ───────────────────────── */
+    [data-testid="collapsedControl"],
+    [data-testid="stSidebarCollapseButton"],
+    button[kind="headerNoPadding"] {
+        display: none !important;
+    }
+    section[data-testid="stSidebar"] {
+        min-width: 310px !important;
+        max-width: 340px !important;
     }
 
     /* ── Expander — fixed arrow rendering ──────────────────────────────────── */
