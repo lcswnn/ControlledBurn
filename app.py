@@ -7,7 +7,6 @@ import nws
 
 st.set_page_config(
     page_title="Controlled Burn Checker",
-    page_icon="🔥",
     layout="wide"
 )
 
@@ -19,7 +18,7 @@ st.markdown(
 
     /* ── Layout ────────────────────────────────────────────────────────────── */
     .block-container {
-        max-width: 1100px;
+        max-width: 1200px;
         padding-left: 2rem;
         padding-right: 2rem;
     }
@@ -216,7 +215,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("🔥 Controlled Burn Conditions Checker")
+st.title("Controlled Burn Conditions Checker")
 st.caption("Enter a location and fuel height to assess whether conditions are safe for a controlled burn.")
 
 st.divider()
