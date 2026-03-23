@@ -505,15 +505,12 @@ if run and location:
         ("Air Quality",       condition_aqi),
     ]
 
-    # ── Determine verdict ─────────────────────────────────────────────────────
-    severities = [c[1][1] for c in core_conditions]
-
-    if "fail" in severities:
-        verdict = "fail"
-    elif "caution" in severities:
-        verdict = "caution"
-    else:
-        verdict = "ok"
+    # ── Determine verdict (tiered: critical vs secondary + score gate) ────────
+    condition_results = {"frontal": condition_frontal}
+    burn_score = conditions.calculate_burn_score(
+        weather_data, fuel_height, condition_results, condition_red_flag
+    )
+    verdict = conditions.determine_verdict(core_conditions, burn_score)
 
     st.divider()
 
@@ -546,6 +543,18 @@ if run and location:
             st.warning("PROCEED WITH CAUTION — Conditions are marginal.")
         else:
             st.error("BURN NOT RECOMMENDED — One or more conditions failed.")
+
+        # Burn readiness score
+        score_color = "#4caf50" if burn_score >= 75 else "#f7941d" if burn_score >= 50 else "#d44a3a"
+        st.markdown(
+            f'<div style="text-align:center; margin:0.5rem 0;">'
+            f'<span style="font-family:Lora,serif; font-size:2rem; font-weight:700; '
+            f'color:{score_color};">{burn_score}</span>'
+            f'<span style="font-size:1rem; color:#6a8f5e;">/100</span>'
+            f'<div style="font-size:0.8rem; color:#8a8a7a;">Burn Readiness Score</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
         # 60/40 advisory
         st.divider()

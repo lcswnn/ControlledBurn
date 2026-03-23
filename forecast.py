@@ -90,28 +90,33 @@ def evaluate_day(day_data, fuel_height):
         ("Precipitation", cond_precip),
     ]
 
-    # Determine verdict
-    severities = [c[1][1] for c in checks]
-    if "fail" in severities:
-        verdict = "fail"
-    elif "caution" in severities:
-        verdict = "caution"
-    else:
-        verdict = "ok"
+    # ── Weighted score (mirrors real-world burn priorities) ───────────────
+    # Critical checks get heavier deductions than secondary ones
+    CRITICAL_DEDUCTIONS = {"Wind": 25, "Humidity": 22, "Air Quality": 18}
+    SECONDARY_DEDUCTIONS = {"Temperature": 10, "Soil Moisture": 8,
+                            "Smoke Dispersal": 10, "Frontal Passage": 12,
+                            "Precipitation": 12}
 
-    # Simple score: 100 base, deduct for issues
     score = 100
-    for _, (_, sev, _) in checks:
+    for label, (_, sev, _) in checks:
         if sev == "fail":
-            score -= 18
+            score -= CRITICAL_DEDUCTIONS.get(label,
+                     SECONDARY_DEDUCTIONS.get(label, 15))
         elif sev == "caution":
-            score -= 7
+            # Caution deductions are ~40% of fail deductions
+            fail_deduct = CRITICAL_DEDUCTIONS.get(label,
+                          SECONDARY_DEDUCTIONS.get(label, 15))
+            score -= round(fail_deduct * 0.4)
+
     # Rain probability penalty
     if precip_prob > 50:
-        score -= 10
+        score -= 8
     elif precip_prob > 25:
-        score -= 5
+        score -= 4
     score = max(0, min(100, score))
+
+    # ── Tiered verdict (same logic as current-day assessment) ─────────────
+    verdict = conditions.determine_verdict(checks, score)
 
     # Parse date for display
     try:

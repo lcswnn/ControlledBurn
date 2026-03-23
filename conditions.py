@@ -260,6 +260,67 @@ def check_aqi(aqi_value):
     )
 
 
+# ── tiered verdict logic ──────────────────────────────────────────────────────
+# Critical conditions: any single fail → hard fail verdict
+# Secondary conditions: 1 fail → caution; 2+ fails → fail
+# Score gate: < 50 → fail, < 75 → caution (even if individual checks pass)
+
+CRITICAL_CONDITIONS = {"Red Flag Warning", "Wind", "Humidity", "Air Quality"}
+SECONDARY_CONDITIONS = {"Temperature", "Soil Moisture", "Smoke Dispersal",
+                        "Frontal Passage", "Precipitation"}
+
+
+def determine_verdict(core_conditions, burn_score=None):
+    """Return 'ok', 'caution', or 'fail' using tiered condition logic.
+
+    Parameters
+    ----------
+    core_conditions : list of (label, (value, severity, message))
+    burn_score : int or None — if provided, used as a secondary gate
+
+    Returns
+    -------
+    str : 'ok' | 'caution' | 'fail'
+    """
+    critical_severities = []
+    secondary_severities = []
+
+    for label, cond in core_conditions:
+        sev = cond[1]
+        if label in CRITICAL_CONDITIONS:
+            critical_severities.append(sev)
+        else:
+            secondary_severities.append(sev)
+
+    # Any critical fail → hard fail
+    if "fail" in critical_severities:
+        return "fail"
+
+    # Count secondary fails
+    secondary_fails = secondary_severities.count("fail")
+
+    # 2+ secondary fails → fail
+    if secondary_fails >= 2:
+        return "fail"
+
+    # 1 secondary fail → caution
+    if secondary_fails == 1:
+        verdict = "caution"
+    elif "caution" in critical_severities or "caution" in secondary_severities:
+        verdict = "caution"
+    else:
+        verdict = "ok"
+
+    # Score-based secondary gate
+    if burn_score is not None:
+        if burn_score < 50:
+            return "fail"
+        if burn_score < 75 and verdict == "ok":
+            return "caution"
+
+    return verdict
+
+
 # ── composite burn score ──────────────────────────────────────────────────────
 
 def calculate_burn_score(weather_data, fuel_height, condition_results,
@@ -325,19 +386,26 @@ def calculate_burn_score(weather_data, fuel_height, condition_results,
     frontal_result = condition_results.get("frontal", (False, "ok", ""))
     frontal_score = 50 if frontal_result[1] == "fail" else 100
 
-    # --- Weighted average ---
+    # --- Weighted average (reflects real-world burn priorities) ---
+    # Wind + humidity are the primary fire behavior drivers (~55%)
+    # AQI/smoke are increasingly regulated gating factors (~15%)
+    # Frontal passage is a safety concern (~12%)
+    # Temperature and soil are secondary (~18%)
     weights = {
-        "wind": 0.22, "humidity": 0.18, "temperature": 0.13,
-        "soil": 0.13, "smoke": 0.12, "frontal": 0.08, "aqi": 0.14,
+        "wind": 0.30, "humidity": 0.25, "aqi": 0.15,
+        "frontal": 0.12, "temperature": 0.10, "soil": 0.08,
     }
+    # --- Combined AQI + smoke dispersal sub-score ---
+    # Both relate to air quality / smoke management — average them
+    combined_aqi_smoke = (aqi_score + smoke_score) / 2
+
     weighted = (
-        wind_score     * weights["wind"]
-        + humidity_score * weights["humidity"]
-        + temp_score     * weights["temperature"]
-        + soil_score     * weights["soil"]
-        + smoke_score    * weights["smoke"]
-        + frontal_score  * weights["frontal"]
-        + aqi_score      * weights["aqi"]
+        wind_score         * weights["wind"]
+        + humidity_score   * weights["humidity"]
+        + temp_score       * weights["temperature"]
+        + soil_score       * weights["soil"]
+        + frontal_score    * weights["frontal"]
+        + combined_aqi_smoke * weights["aqi"]
     )
 
     # Red flag warning tanks the score
