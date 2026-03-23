@@ -366,6 +366,23 @@ with st.sidebar:
             """
         )
 
+    with st.expander("Air Quality (AQI)"):
+        st.markdown(
+            """
+            Fetches the current **US EPA Air Quality Index** from
+            Open-Meteo's Air Quality API (no API key required).
+
+            - **AQI 0–50 (Good):** ideal for burning
+            - **AQI 51–100 (Moderate):** acceptable, monitor conditions
+            - **AQI 101–150 (USG):** do not burn
+            - **AQI 151+ (Unhealthy):** do not burn
+
+            Burning adds particulate matter and gases to the air. Starting
+            a burn when air quality is already degraded compounds the health
+            impact on nearby communities.
+            """
+        )
+
     with st.expander("60/40 Rule (Advisory)"):
         st.markdown(
             """
@@ -388,6 +405,8 @@ with st.sidebar:
         """
         - **Weather data:** [Open-Meteo API](https://open-meteo.com/)
         (temperature, wind, humidity, soil moisture, mixing height)
+        - **Air Quality:** [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api)
+        (US AQI, PM2.5, PM10, ozone)
         - **Red Flag Warnings:** [NWS Alerts API](https://api.weather.gov/)
         - **Geocoding:** OpenStreetMap / Nominatim
         """
@@ -469,6 +488,7 @@ if run and location:
         weather_data["relative_humidity"],
         weather_data["wind_speed_mph"]
     )
+    condition_aqi = conditions.check_aqi(weather_data.get("us_aqi"))
 
     core_conditions = [
         ("Red Flag Warning",  condition_red_flag),
@@ -478,6 +498,7 @@ if run and location:
         ("Soil Moisture",     condition_soil),
         ("Smoke Dispersal",   condition_smoke),
         ("Frontal Passage",   condition_frontal),
+        ("Air Quality",       condition_aqi),
     ]
 
     # ── Determine verdict ─────────────────────────────────────────────────────
@@ -543,6 +564,29 @@ if run and location:
         c5.metric("Mixing Ht", f"{weather_data['mixing_height_ft']:.0f} ft")
         wind_dir = weather_data.get("wind_direction_deg")
         c6.metric("Wind Dir", f"{deg_to_compass(wind_dir)} ({wind_dir}°)" if wind_dir is not None else "—")
+
+        # AQI metrics row
+        aqi_val = weather_data.get("us_aqi")
+        if aqi_val is not None:
+            if aqi_val <= 50:
+                aqi_label = f"{aqi_val} (Good)"
+            elif aqi_val <= 100:
+                aqi_label = f"{aqi_val} (Moderate)"
+            elif aqi_val <= 150:
+                aqi_label = f"{aqi_val} (USG)"
+            elif aqi_val <= 200:
+                aqi_label = f"{aqi_val} (Unhealthy)"
+            else:
+                aqi_label = f"{aqi_val} (Very Unhealthy)"
+        else:
+            aqi_label = "—"
+
+        c7, c8, c9 = st.columns(3)
+        c7.metric("AQI", aqi_label)
+        pm25 = weather_data.get("pm2_5")
+        c8.metric("PM2.5", f"{pm25:.1f} µg/m³" if pm25 is not None else "—")
+        pm10 = weather_data.get("pm10")
+        c9.metric("PM10", f"{pm10:.1f} µg/m³" if pm10 is not None else "—")
 
         st.divider()
 
@@ -635,11 +679,13 @@ if run and location:
                         icon = "❌"
                         border_color = "#d44a3a"
 
+                    aqi_display = f"🌬️ AQI {day.get('us_aqi')}" if day.get("us_aqi") is not None else "🌬️ AQI —"
+
                     st.markdown(
                         f'<div style="border:2px solid {border_color}; '
                         f'border-radius:10px; padding:0.8rem; margin:0.35rem 0.25rem; '
                         f'background:#ffffff; text-align:center; '
-                        f'min-height:280px;">'
+                        f'min-height:310px;">'
                         f'<div style="font-size:1.5rem;">{icon}</div>'
                         f'<div style="font-family:Lora,serif; font-weight:700; '
                         f'color:#2e7d32; font-size:1.05rem; margin:0.3rem 0;">'
@@ -654,8 +700,9 @@ if run and location:
                         f'💧 {day["relative_humidity"]}% RH<br>'
                         f'🌧️ {day["precipitation_in"]:.2f}" '
                         f'({day["precipitation_probability"]}%)<br>'
-                        + (f'🌫️ Mix Ht {day["mixing_height_ft"]:.0f} ft'
-                           if day["mixing_height_ft"] else '🌫️ Mix Ht —')
+                        + (f'🌫️ Mix Ht {day["mixing_height_ft"]:.0f} ft<br>'
+                           if day["mixing_height_ft"] else '🌫️ Mix Ht —<br>')
+                        + f'{aqi_display}'
                         + f'</div></div>',
                         unsafe_allow_html=True,
                     )
@@ -685,6 +732,88 @@ if run and location:
                 else:
                     st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;⚠️ **60/40 Rule** — {adv[2]}")
                 st.markdown("---")
+
+        # ══════════════════════════════════════════════════════════════════
+        # OPTIMAL BURN WINDOWS
+        # ══════════════════════════════════════════════════════════════════
+        st.divider()
+        st.header("Optimal Burn Windows")
+        st.caption(
+            "Consecutive days with favorable conditions, ranked by average score. "
+            "Multi-day windows give you flexibility to pick the best time."
+        )
+
+        windows = forecast.find_optimal_windows(weekly_results, min_consecutive=1)
+
+        if windows:
+            for i, window in enumerate(windows):
+                avg = window["avg_score"]
+                if avg >= 80:
+                    win_color = "#4caf50"
+                    win_bg = "#e8f5e9"
+                    win_icon = "🟢"
+                elif avg >= 60:
+                    win_color = "#f7941d"
+                    win_bg = "#fff8e1"
+                    win_icon = "🟡"
+                else:
+                    win_color = "#d44a3a"
+                    win_bg = "#fce4e4"
+                    win_icon = "🔴"
+
+                summary = forecast.format_window_summary(window)
+                verdict_icons = " → ".join(
+                    "✅" if v == "ok" else "⚠️" for v in window["verdicts"]
+                )
+                day_names = ", ".join(
+                    d["day_label"] for d in window["day_details"]
+                )
+
+                if window["days"] > 1:
+                    st.markdown(
+                        f'<div style="border-left:4px solid {win_color}; '
+                        f'padding:0.8rem 1rem; margin:0.5rem 0; '
+                        f'background:{win_bg}; '
+                        f'border-radius:0 8px 8px 0;">'
+                        f'<div style="font-size:1rem; font-weight:700; color:#2e7d32;">'
+                        f'{win_icon} Window #{i+1}: {summary}</div>'
+                        f'<div style="font-size:0.85rem; color:#555; margin-top:0.3rem;">'
+                        f'Days: {day_names} — '
+                        f'Verdicts: {verdict_icons}'
+                        f'</div></div>',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        f'<div style="border-left:4px solid {win_color}; '
+                        f'padding:0.6rem 1rem; margin:0.5rem 0; '
+                        f'background:{win_bg}; '
+                        f'border-radius:0 8px 8px 0;">'
+                        f'<div style="font-size:1rem; font-weight:700; color:#2e7d32;">'
+                        f'{win_icon} {summary}</div></div>',
+                        unsafe_allow_html=True,
+                    )
+
+            # Best recommendation callout
+            best_window = windows[0]
+            if best_window["days"] > 1:
+                st.info(
+                    f"**Recommended:** {best_window['start_label']} → "
+                    f"{best_window['end_label']} offers the best "
+                    f"{best_window['days']}-day burn window with an average "
+                    f"score of {best_window['avg_score']:.0f}/100."
+                )
+            else:
+                st.info(
+                    f"**Recommended:** {best_window['start_label']} is the "
+                    f"best single-day burn opportunity with a score of "
+                    f"{best_window['avg_score']:.0f}/100."
+                )
+        else:
+            st.error(
+                "No favorable burn windows found in the next 7 days. "
+                "All days have at least one failing condition."
+            )
 
 elif run and not location:
     st.warning("Please enter a location before checking conditions.")

@@ -6,6 +6,105 @@ MAX_RETRIES = 3
 BASE_DELAY = 2  # seconds
 
 
+def _fetch_with_retry(url, params, timeout=10):
+    """Generic GET with retry + exponential backoff."""
+    last_error = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.get(url, params=params, timeout=timeout)
+            if response.status_code == 429:
+                wait = BASE_DELAY * (2 ** attempt)
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(wait)
+                    continue
+                else:
+                    raise RuntimeError(
+                        f"Rate limit exceeded after {MAX_RETRIES} retries"
+                    )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            last_error = e
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(BASE_DELAY * (2 ** attempt))
+                continue
+            raise RuntimeError(f"API request failed after {MAX_RETRIES} attempts: {e}")
+    raise RuntimeError(f"API request failed: {last_error}")
+
+
+def get_aqi(lat, lon):
+    """Fetch current US AQI from Open-Meteo Air Quality API.
+
+    Returns dict with 'us_aqi' (int or None) and 'pm2_5', 'pm10',
+    'ozone', 'nitrogen_dioxide' concentrations.
+    """
+    url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "current": [
+            "us_aqi",
+            "pm2_5",
+            "pm10",
+            "ozone",
+            "nitrogen_dioxide",
+        ],
+        "timezone": "America/Chicago",
+    }
+
+    try:
+        data = _fetch_with_retry(url, params)
+        current = data.get("current", {})
+        return {
+            "us_aqi": current.get("us_aqi"),
+            "pm2_5": current.get("pm2_5"),
+            "pm10": current.get("pm10"),
+            "ozone": current.get("ozone"),
+            "nitrogen_dioxide": current.get("nitrogen_dioxide"),
+        }
+    except Exception:
+        return {
+            "us_aqi": None,
+            "pm2_5": None,
+            "pm10": None,
+            "ozone": None,
+            "nitrogen_dioxide": None,
+        }
+
+
+def get_aqi_forecast(lat, lon, days=5):
+    """Fetch hourly US AQI forecast, return daily max AQI per day.
+
+    Returns a dict mapping date string → max AQI for that day.
+    """
+    url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": "us_aqi",
+        "forecast_days": days,
+        "timezone": "America/Chicago",
+    }
+
+    try:
+        data = _fetch_with_retry(url, params)
+        hourly = data.get("hourly", {})
+        times = hourly.get("time", [])
+        aqi_vals = hourly.get("us_aqi", [])
+
+        daily_max = {}
+        for t, aqi in zip(times, aqi_vals):
+            if aqi is None:
+                continue
+            day = t[:10]  # "YYYY-MM-DD"
+            if day not in daily_max or aqi > daily_max[day]:
+                daily_max[day] = aqi
+
+        return daily_max
+    except Exception:
+        return {}
+
+
 def get_weather(lat, lon):
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
     params = {
@@ -37,35 +136,7 @@ def get_weather(lat, lon):
         "timezone": "America/Chicago"
     }
 
-    # ── Fetch with retry + exponential backoff ────────────────────────────────
-    last_error = None
-    for attempt in range(MAX_RETRIES):
-        try:
-            response = requests.get(BASE_URL, params=params, timeout=10)
-
-            if response.status_code == 429:
-                wait = BASE_DELAY * (2 ** attempt)  # 2s, 4s, 8s
-                if attempt < MAX_RETRIES - 1:
-                    time.sleep(wait)
-                    continue
-                else:
-                    raise RuntimeError(
-                        f"Non-successful status code 429 — rate limit exceeded "
-                        f"after {MAX_RETRIES} retries"
-                    )
-
-            response.raise_for_status()
-            data = response.json()
-            break  # success
-
-        except requests.exceptions.RequestException as e:
-            last_error = e
-            if attempt < MAX_RETRIES - 1:
-                time.sleep(BASE_DELAY * (2 ** attempt))
-                continue
-            raise RuntimeError(f"Weather API request failed after {MAX_RETRIES} attempts: {e}")
-    else:
-        raise RuntimeError(f"Weather API request failed: {last_error}")
+    data = _fetch_with_retry(BASE_URL, params)
 
     # ── Parse response ────────────────────────────────────────────────────────
     current = data.get("current", {})
@@ -110,6 +181,9 @@ def get_weather(lat, lon):
         # Next 12 hours of wind direction for shift detection
         hourly_wind_directions = hourly["wind_direction_10m"][hour_index:hour_index + 12]
 
+    # ── Fetch AQI alongside weather ──────────────────────────────────────────
+    aqi_data = get_aqi(lat, lon)
+
     return {
         "temperature_f": current.get("temperature_2m"),
         "relative_humidity": current.get("relative_humidity_2m"),
@@ -125,6 +199,12 @@ def get_weather(lat, lon):
         "precip_48h_in": precip_48h,
         "mixing_height_ft": mixing_height_ft,
         "hourly_wind_directions": hourly_wind_directions,
+        # AQI fields
+        "us_aqi": aqi_data.get("us_aqi"),
+        "pm2_5": aqi_data.get("pm2_5"),
+        "pm10": aqi_data.get("pm10"),
+        "ozone": aqi_data.get("ozone"),
+        "nitrogen_dioxide": aqi_data.get("nitrogen_dioxide"),
     }
 
 
@@ -166,36 +246,17 @@ def get_weekly_forecast(lat, lon, days=7):
         "timezone": "America/Chicago",
     }
 
-    last_error = None
-    for attempt in range(MAX_RETRIES):
-        try:
-            response = requests.get(BASE_URL, params=params, timeout=10)
-            if response.status_code == 429:
-                wait = BASE_DELAY * (2 ** attempt)
-                if attempt < MAX_RETRIES - 1:
-                    time.sleep(wait)
-                    continue
-                else:
-                    raise RuntimeError(
-                        f"Rate limit exceeded after {MAX_RETRIES} retries"
-                    )
-            response.raise_for_status()
-            data = response.json()
-            break
-        except requests.exceptions.RequestException as e:
-            last_error = e
-            if attempt < MAX_RETRIES - 1:
-                time.sleep(BASE_DELAY * (2 ** attempt))
-                continue
-            raise RuntimeError(f"Weather API failed after {MAX_RETRIES} attempts: {e}")
-    else:
-        raise RuntimeError(f"Weather API failed: {last_error}")
+    data = _fetch_with_retry(BASE_URL, params)
 
     daily = data.get("daily", {})
     hourly = data.get("hourly", {})
     hourly_times = hourly.get("time", [])
 
     dates = daily.get("time", [])
+
+    # ── Fetch AQI forecast alongside weather ─────────────────────────────
+    aqi_forecast = get_aqi_forecast(lat, lon, days=days)
+
     forecasts = []
 
     for i, date_str in enumerate(dates):
@@ -261,6 +322,8 @@ def get_weekly_forecast(lat, lon, days=7):
             "soil_moisture_27_to_81cm": soil.get("soil_moisture_27_to_81cm"),
             "mixing_height_ft": mixing_height_ft,
             "hourly_wind_directions": day_wind_dirs,
+            # AQI for this forecast day
+            "us_aqi": aqi_forecast.get(date_str),
         })
 
     return forecasts

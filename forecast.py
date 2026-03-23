@@ -2,7 +2,7 @@
 # Runs the same condition checks from conditions.py against each forecast day
 # and produces a scored summary with a best-day recommendation.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import conditions
 
 
@@ -63,6 +63,10 @@ def evaluate_day(day_data, fuel_height):
     # 60/40 rule (advisory)
     cond_6040 = conditions.check_6040_rule(temp, rh, wind_speed)
 
+    # AQI check
+    aqi_val = day_data.get("us_aqi")
+    cond_aqi = conditions.check_aqi(aqi_val)
+
     # Precipitation penalty — not a hard conditions.py check, but useful
     precip = day_data.get("precipitation_in") or 0
     precip_prob = day_data.get("precipitation_probability") or 0
@@ -82,6 +86,7 @@ def evaluate_day(day_data, fuel_height):
         ("Soil Moisture", cond_soil),
         ("Smoke Dispersal", cond_smoke),
         ("Frontal Passage", cond_frontal),
+        ("Air Quality", cond_aqi),
         ("Precipitation", cond_precip),
     ]
 
@@ -98,9 +103,9 @@ def evaluate_day(day_data, fuel_height):
     score = 100
     for _, (_, sev, _) in checks:
         if sev == "fail":
-            score -= 20
+            score -= 18
         elif sev == "caution":
-            score -= 8
+            score -= 7
     # Rain probability penalty
     if precip_prob > 50:
         score -= 10
@@ -129,6 +134,7 @@ def evaluate_day(day_data, fuel_height):
         "precipitation_in": precip,
         "precipitation_probability": precip_prob,
         "mixing_height_ft": mixing,
+        "us_aqi": aqi_val,
     }
 
 
@@ -150,3 +156,79 @@ def best_burn_days(weekly_results, top_n=3):
     candidates = [r for r in weekly_results if r["verdict"] != "fail"]
     candidates.sort(key=lambda r: r["score"], reverse=True)
     return candidates[:top_n]
+
+
+# ── Optimal Burn Window Finder ────────────────────────────────────────────────
+
+def find_optimal_windows(weekly_results, min_consecutive=1):
+    """Find optimal burn windows — consecutive days with verdict != 'fail'.
+
+    Identifies streaks of favorable days and ranks them by average score.
+
+    Parameters
+    ----------
+    weekly_results : list[dict] — output of evaluate_week()
+    min_consecutive : int — minimum consecutive favorable days to form a window
+
+    Returns
+    -------
+    list[dict] with keys:
+        start_date, end_date, start_label, end_label, days (int),
+        avg_score, min_score, verdicts (list[str]), day_details (list[dict])
+    """
+    if not weekly_results:
+        return []
+
+    # Sort by date
+    sorted_days = sorted(weekly_results, key=lambda r: r["date"])
+
+    # Find consecutive non-fail streaks
+    windows = []
+    current_streak = []
+
+    for day in sorted_days:
+        if day["verdict"] != "fail":
+            current_streak.append(day)
+        else:
+            if len(current_streak) >= min_consecutive:
+                windows.append(current_streak)
+            current_streak = []
+
+    # Don't forget last streak
+    if len(current_streak) >= min_consecutive:
+        windows.append(current_streak)
+
+    # Build window summaries
+    results = []
+    for streak in windows:
+        scores = [d["score"] for d in streak]
+        results.append({
+            "start_date": streak[0]["date"],
+            "end_date": streak[-1]["date"],
+            "start_label": streak[0]["day_label"],
+            "end_label": streak[-1]["day_label"],
+            "days": len(streak),
+            "avg_score": round(sum(scores) / len(scores), 1),
+            "min_score": min(scores),
+            "max_score": max(scores),
+            "verdicts": [d["verdict"] for d in streak],
+            "day_details": streak,
+        })
+
+    # Sort by avg_score descending (best windows first)
+    results.sort(key=lambda w: w["avg_score"], reverse=True)
+    return results
+
+
+def format_window_summary(window):
+    """Return a human-readable string for a burn window."""
+    if window["days"] == 1:
+        return (
+            f"{window['start_label']} — Score: {window['avg_score']:.0f}/100"
+        )
+    return (
+        f"{window['start_label']} → {window['end_label']} "
+        f"({window['days']} days) — "
+        f"Avg Score: {window['avg_score']:.0f}/100, "
+        f"Range: {window['min_score']}–{window['max_score']}"
+    )

@@ -1,51 +1,62 @@
-# controlled burn constatnts we have to check against.
+# controlled burn constants we have to check against.
 
-#wind
+# wind
 WIND_SPEED_MIN_MPH = 4
 WIND_SPEED_MAX_MPH = 15
 WIND_CALM_THRESHOLD_MPH = 3
 WIND_GUST_MAX_RATIO = 1.5
 WIND_DIRECTION_SHIFT_MAX_DEG = 45
 
-#humidity
+# humidity
 RH_MIN_PCT = 30
 RH_MAX_PCT = 50
 RH_DANGER_LOW_PCT = 25
 
-#fuel height
+# fuel height
 FUEL_HEIGHT_SHORT_THRESHOLD_FT = 2.0
 FUEL_HEIGHT_MAX_FT = 8.0
 FUEL_HEIGHT_MIN_FT = 0.5
 
-#fuel-height adjusted thresholds
+# fuel-height adjusted thresholds
 RH_MIN_SHORT_FUEL = 30
 RH_MAX_SHORT_FUEL = 60
 RH_MIN_TALL_FUEL = 45
 RH_MAX_TALL_FUEL = 65
 
-#temperature
+# temperature
 TEMP_MAX_F = 80
 TEMP_MIN_SHORT_FUEL_F = 32
 TEMP_MAX_SHORT_FUEL_F = 80
 TEMP_MIN_TALL_FUEL_F = 25
 TEMP_MAX_TALL_FUEL_F = 80
 
-#60:40 rule (conservative guideline for less experienced burners)
-#temp < 60 degrees F and RH > 40% AND wind 5-15 mph
+# 60:40 rule (conservative guideline for less experienced burners)
+# temp < 60 degrees F and RH > 40% AND wind 5-15 mph
 RULE_6040_TEMP_MAX_F = 60
 RULE_6040_RH_MIN_PCT = 40
 
-#soil
+# soil
 SOIL_MOISTURE_MIN = 0.20
 SOIL_MOISTURE_IDEAL = 0.35
 
-#smoke dispersal
+# smoke dispersal
 MIXING_HEIGHT_MIN_FT = 1650
 MIXING_HEIGHT_MAX_FT = 10000
 TRANSPORT_WIND_MIN_MPH = 10
-TRANSPORT_WIND_MAX_MPH = 20 
+TRANSPORT_WIND_MAX_MPH = 20
 
-#frontal passage
+# frontal passage
 FRONTAL_PASSAGE_WINDOW_HRS = 12
 
-#red flag warning via NWS API
+# red flag warning via NWS API
+
+# ── Air Quality Index (AQI) ──────────────────────────────────────────────────
+# US EPA AQI thresholds for controlled burns
+# AQI 0-50: Good — ideal for burning
+# AQI 51-100: Moderate — acceptable, but be aware
+# AQI 101-150: Unhealthy for Sensitive Groups — caution
+# AQI 151+: Unhealthy — do not burn
+AQI_GOOD_MAX = 50          # AQI <= 50 is "Good" → ok
+AQI_MODERATE_MAX = 100     # AQI 51-100 is "Moderate" → caution
+AQI_USG_MAX = 150          # AQI 101-150 is "USG" → fail (no burn)
+# AQI > 150 is "Unhealthy" or worse → hard fail

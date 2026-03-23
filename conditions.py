@@ -1,6 +1,6 @@
 # conditions.py — threshold logic for controlled-burn checks
 # Every public check returns (value, severity, message)
-#   value   : bool (True = pass, False = fail/caution)
+#   value   : bool (True = pass, False = fail)
 #   severity: "ok" | "caution" | "fail"
 #   message : human-readable explanation
 
@@ -228,6 +228,38 @@ def check_6040_rule(temperature_f, relative_humidity, wind_speed_mph):
     )
 
 
+def check_aqi(aqi_value):
+    """Check Air Quality Index for controlled burn suitability.
+
+    US EPA AQI scale:
+      0-50   Good               → ok
+      51-100 Moderate            → caution
+      101-150 Unhealthy for SG   → fail
+      151+   Unhealthy or worse  → fail
+    """
+    if aqi_value is None:
+        return True, "caution", "AQI data unavailable — check local air quality before burning."
+
+    if aqi_value <= config.AQI_GOOD_MAX:
+        return True, "ok", f"Air quality is good (AQI {aqi_value}) — safe to burn."
+
+    if aqi_value <= config.AQI_MODERATE_MAX:
+        return True, "caution", (
+            f"Air quality is moderate (AQI {aqi_value}) — burning will add to "
+            f"existing pollution. Monitor conditions."
+        )
+
+    if aqi_value <= config.AQI_USG_MAX:
+        return False, "fail", (
+            f"Air quality is unhealthy for sensitive groups (AQI {aqi_value}) — "
+            f"do not burn."
+        )
+
+    return False, "fail", (
+        f"Air quality is unhealthy (AQI {aqi_value}) — burning is not safe."
+    )
+
+
 # ── composite burn score ──────────────────────────────────────────────────────
 
 def calculate_burn_score(weather_data, fuel_height, condition_results,
@@ -275,14 +307,27 @@ def calculate_burn_score(weather_data, fuel_height, condition_results,
         0, config.MIXING_HEIGHT_MAX_FT + 5000,
     )
 
+    # --- AQI sub-score ---
+    aqi_val = weather_data.get("us_aqi")
+    if aqi_val is not None:
+        # 0-50 → 100, 51-100 → 70, 101-150 → 30, 151+ → 0
+        if aqi_val <= config.AQI_GOOD_MAX:
+            aqi_score = 100
+        elif aqi_val <= config.AQI_MODERATE_MAX:
+            aqi_score = max(0, 100 - (aqi_val - config.AQI_GOOD_MAX) * 0.6)
+        else:
+            aqi_score = max(0, 50 - (aqi_val - config.AQI_MODERATE_MAX) * 0.5)
+    else:
+        aqi_score = 50  # unknown → neutral
+
     # --- Frontal passage sub-score (binary from check result) ---
     frontal_result = condition_results.get("frontal", (False, "ok", ""))
     frontal_score = 50 if frontal_result[1] == "fail" else 100
 
     # --- Weighted average ---
     weights = {
-        "wind": 0.25, "humidity": 0.20, "temperature": 0.15,
-        "soil": 0.15, "smoke": 0.15, "frontal": 0.10,
+        "wind": 0.22, "humidity": 0.18, "temperature": 0.13,
+        "soil": 0.13, "smoke": 0.12, "frontal": 0.08, "aqi": 0.14,
     }
     weighted = (
         wind_score     * weights["wind"]
@@ -291,6 +336,7 @@ def calculate_burn_score(weather_data, fuel_height, condition_results,
         + soil_score     * weights["soil"]
         + smoke_score    * weights["smoke"]
         + frontal_score  * weights["frontal"]
+        + aqi_score      * weights["aqi"]
     )
 
     # Red flag warning tanks the score
