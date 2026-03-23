@@ -264,6 +264,7 @@ def check_aqi(aqi_value):
 
 def calculate_burn_score(weather_data, fuel_height, condition_results,
                          condition_red_flag):
+    # sourcery skip: merge-else-if-into-elif, swap-if-else-branches
 
     ws     = weather_data["wind_speed_mph"] or 0
     wg     = weather_data["wind_gusts_mph"] or 0
