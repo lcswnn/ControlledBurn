@@ -4,6 +4,7 @@ import geocode
 import weather
 import conditions
 import nws
+import forecast
 
 
 def deg_to_compass(deg):
@@ -59,6 +60,7 @@ st.markdown(
     .stApp h1 {
         font-family: 'Lora', serif !important;
         color: #2e7d32 !important;
+        text-align: center;
     }
     .stApp h2, .stApp h3 {
         font-family: 'Lora', serif !important;
@@ -583,6 +585,106 @@ if run and location:
                 col.metric(f"+{i}h", f"{d}°", help=deg_to_compass(d))
         else:
             st.write("No hourly wind data available.")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # 7-DAY BURN FORECAST
+    # ══════════════════════════════════════════════════════════════════════════
+    st.divider()
+    st.header("7-Day Burn Forecast")
+    st.caption(
+        "Daily conditions scored against the same thresholds used above. "
+        "Forecast accuracy decreases beyond 3–4 days — treat later days as "
+        "rough guidance, not guarantees."
+    )
+
+    with st.spinner("Loading weekly forecast..."):
+        try:
+            weekly_data = weather.get_weekly_forecast(lat, lon, days=7)
+            weekly_results = forecast.evaluate_week(weekly_data, fuel_height)
+        except Exception as e:
+            st.error(f"Could not load weekly forecast: {e}")
+            weekly_results = None
+
+    if weekly_results:
+        # ── Best days recommendation ──────────────────────────────────────
+        best_days = forecast.best_burn_days(weekly_results)
+        if best_days:
+            best_str = ", ".join(
+                f"**{d['day_label']}** (score {d['score']})" for d in best_days
+            )
+            st.success(f"🔥 **Best burn window(s):** {best_str}")
+        else:
+            st.error("No favorable burn days found in the next 7 days.")
+
+        # ── Day-by-day cards ──────────────────────────────────────────────
+        # Show in rows of 4 + 3
+        for row_start in range(0, len(weekly_results), 4):
+            row_days = weekly_results[row_start:row_start + 4]
+            cols = st.columns(len(row_days))
+
+            for col, day in zip(cols, row_days):
+                with col:
+                    # Verdict emoji + day label
+                    if day["verdict"] == "ok":
+                        icon = "✅"
+                        border_color = "#4caf50"
+                    elif day["verdict"] == "caution":
+                        icon = "⚠️"
+                        border_color = "#f7941d"
+                    else:
+                        icon = "❌"
+                        border_color = "#d44a3a"
+
+                    st.markdown(
+                        f'<div style="border:2px solid {border_color}; '
+                        f'border-radius:10px; padding:0.8rem; '
+                        f'background:#ffffff; text-align:center; '
+                        f'min-height:280px;">'
+                        f'<div style="font-size:1.5rem;">{icon}</div>'
+                        f'<div style="font-family:Lora,serif; font-weight:700; '
+                        f'color:#2e7d32; font-size:1.05rem; margin:0.3rem 0;">'
+                        f'{day["day_label"]}</div>'
+                        f'<div style="font-size:0.85rem; color:#6a8f5e; '
+                        f'margin-bottom:0.4rem;">Score: {day["score"]}/100</div>'
+                        f'<div style="font-size:0.82rem; text-align:left; '
+                        f'line-height:1.5; color:#3b3b3b;">'
+                        f'🌡️ {day["temperature_f"]}°F<br>'
+                        f'💨 {day["wind_speed_mph"]} mph '
+                        f'(gusts {day["wind_gusts_mph"]})<br>'
+                        f'💧 {day["relative_humidity"]}% RH<br>'
+                        f'🌧️ {day["precipitation_in"]:.2f}" '
+                        f'({day["precipitation_probability"]}%)<br>'
+                        + (f'🌫️ Mix Ht {day["mixing_height_ft"]:.0f} ft'
+                           if day["mixing_height_ft"] else '🌫️ Mix Ht —')
+                        + f'</div></div>',
+                        unsafe_allow_html=True,
+                    )
+
+        # ── Detailed breakdown in expander ────────────────────────────────
+        with st.expander("Detailed Daily Breakdown"):
+            for day in weekly_results:
+                if day["verdict"] == "ok":
+                    st.success(f"**{day['day_label']}** — Score {day['score']}/100")
+                elif day["verdict"] == "caution":
+                    st.warning(f"**{day['day_label']}** — Score {day['score']}/100")
+                else:
+                    st.error(f"**{day['day_label']}** — Score {day['score']}/100")
+
+                for label, (_, sev, msg) in day["checks"]:
+                    if sev == "fail":
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;❌ **{label}** — {msg}")
+                    elif sev == "caution":
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;⚠️ **{label}** — {msg}")
+                    else:
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;✅ **{label}** — {msg}")
+
+                # 60/40 advisory
+                adv = day["advisory_6040"]
+                if adv[1] == "ok":
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;ℹ️ **60/40 Rule** — {adv[2]}")
+                else:
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;⚠️ **60/40 Rule** — {adv[2]}")
+                st.markdown("---")
 
 elif run and not location:
     st.warning("Please enter a location before checking conditions.")
