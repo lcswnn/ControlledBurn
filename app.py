@@ -637,7 +637,7 @@ if run and location:
 
                     st.markdown(
                         f'<div style="border:2px solid {border_color}; '
-                        f'border-radius:10px; padding:0.8rem; margin:0 0.35rem; '
+                        f'border-radius:10px; padding:0.8rem; margin:0.35rem 0.35rem; '
                         f'background:#ffffff; text-align:center; '
                         f'min-height:280px;">'
                         f'<div style="font-size:1.5rem;">{icon}</div>'
