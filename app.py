@@ -647,10 +647,11 @@ if run and location:
     # 7-DAY BURN FORECAST
     # ══════════════════════════════════════════════════════════════════════════
     st.divider()
-    st.header("7-Day Burn Forecast")
+    st.header("🔥 When Should You Burn?")
     st.caption(
-        "Daily conditions scored against the same thresholds used above. "
-        "Scroll down for the full day-by-day outlook."
+        "Hourly forecast scanned for the next 4 days (7am–7pm). "
+        "Shows the best contiguous 3+ hour windows where all critical "
+        "conditions pass."
     )
 
     with st.spinner("Loading weekly forecast..."):
@@ -663,68 +664,124 @@ if run and location:
 
     if weekly_results:
         # ══════════════════════════════════════════════════════════════════
-        # OPTIMAL BURN WINDOWS — hourly precision
+        # OPTIMAL BURN WINDOWS — hero section with hourly precision
         # ══════════════════════════════════════════════════════════════════
-        st.header("Optimal Burn Windows")
-        st.caption(
-            "Scans hourly forecasts (7am–7pm) for contiguous blocks where "
-            "all conditions pass. Minimum 3-hour window required."
-        )
-
         with st.spinner("Scanning hourly conditions..."):
             try:
                 hourly_data = weather.get_hourly_forecast(lat, lon, days=7)
                 hourly_windows = forecast.find_hourly_windows(
-                    hourly_data, fuel_height, min_hours=3
+                    hourly_data, fuel_height, min_hours=3, max_days=4
                 )
             except Exception as e:
                 st.error(f"Could not scan hourly data: {e}")
                 hourly_windows = None
 
         if hourly_windows:
-            # Show top 5 windows
-            for i, window in enumerate(hourly_windows[:5]):
-                avg = window["avg_score"]
-                if avg >= 80:
-                    win_color = "#4caf50"
-                    win_bg = "#e8f5e9"
-                    win_icon = "🟢"
-                elif avg >= 60:
-                    win_color = "#f7941d"
-                    win_bg = "#fff8e1"
-                    win_icon = "🟡"
-                else:
-                    win_color = "#d44a3a"
-                    win_bg = "#fce4e4"
-                    win_icon = "🔴"
-
-                summary = forecast.format_hourly_window_summary(window)
-
-                st.markdown(
-                    f'<div style="border-left:4px solid {win_color}; '
-                    f'padding:0.8rem 1rem; margin:0.5rem 0; '
-                    f'background:{win_bg}; '
-                    f'border-radius:0 8px 8px 0;">'
-                    f'<div style="font-size:1rem; font-weight:700; color:#2e7d32;">'
-                    f'{win_icon} Window #{i+1}: {summary}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-
-            # Best recommendation callout
             best = hourly_windows[0]
-            st.info(
-                f"**Recommended:** {best['date_label']} from "
-                f"{best['start_hour']}:00–{best['end_hour'] + 1}:00 "
-                f"({best['hours']}h window) with an average score of "
-                f"{best['avg_score']:.0f}/100. "
-                f"Avg wind {best['avg_wind']} mph, "
-                f"temp {best['avg_temp']}°F, "
-                f"humidity {best['avg_rh']}%."
+            avg = best["avg_score"]
+
+            # Hero color scheme based on best window quality
+            if avg >= 80:
+                hero_border = "#4caf50"
+                hero_bg = "linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)"
+                hero_accent = "#2e7d32"
+                hero_badge = "🟢 EXCELLENT"
+            elif avg >= 60:
+                hero_border = "#f7941d"
+                hero_bg = "linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)"
+                hero_accent = "#e65100"
+                hero_badge = "🟡 FAIR"
+            else:
+                hero_border = "#d44a3a"
+                hero_bg = "linear-gradient(135deg, #fce4e4 0%, #f8d0d0 100%)"
+                hero_accent = "#c62828"
+                hero_badge = "🔴 MARGINAL"
+
+            # Format time range
+            start_h = best["start_hour"]
+            end_h = best["end_hour"] + 1
+            start_ampm = f"{start_h % 12 or 12}{'AM' if start_h < 12 else 'PM'}"
+            end_ampm = f"{end_h % 12 or 12}{'AM' if end_h < 12 else 'PM'}"
+
+            st.markdown(
+                f'<div style="border:2px solid {hero_border}; border-radius:12px; '
+                f'padding:1.5rem 2rem; margin:1rem 0; '
+                f'background:{hero_bg}; '
+                f'box-shadow:0 4px 16px rgba(0,0,0,0.08);">'
+                # Title row
+                f'<div style="display:flex; justify-content:space-between; '
+                f'align-items:center; margin-bottom:0.8rem;">'
+                f'<div style="font-family:Lora,serif; font-size:1.4rem; '
+                f'font-weight:700; color:{hero_accent};">'
+                f'🔥 Next Best Burn Window</div>'
+                f'<div style="background:{hero_border}; color:white; '
+                f'padding:0.25rem 0.8rem; border-radius:20px; '
+                f'font-size:0.8rem; font-weight:700;">{hero_badge}</div>'
+                f'</div>'
+                # Main time display
+                f'<div style="font-size:2rem; font-weight:700; '
+                f'color:#2e7d32; margin:0.3rem 0; font-family:Lora,serif;">'
+                f'{best["date_label"]}</div>'
+                f'<div style="font-size:1.6rem; font-weight:600; '
+                f'color:{hero_accent}; margin-bottom:0.8rem;">'
+                f'{start_ampm} – {end_ampm} '
+                f'<span style="font-size:1rem; color:#666;">({best["hours"]}h window)</span></div>'
+                # Conditions summary row
+                f'<div style="display:flex; gap:1.5rem; flex-wrap:wrap; '
+                f'margin-top:0.5rem;">'
+                f'<div style="text-align:center;">'
+                f'<div style="font-size:1.5rem; font-weight:700; color:{hero_accent};">'
+                f'{best["avg_score"]:.0f}</div>'
+                f'<div style="font-size:0.75rem; color:#666;">Score</div></div>'
+                f'<div style="text-align:center;">'
+                f'<div style="font-size:1.5rem; font-weight:700; color:#3b3b3b;">'
+                f'{best["avg_wind"]}</div>'
+                f'<div style="font-size:0.75rem; color:#666;">Avg Wind (mph)</div></div>'
+                f'<div style="text-align:center;">'
+                f'<div style="font-size:1.5rem; font-weight:700; color:#3b3b3b;">'
+                f'{best["avg_temp"]:.0f}°</div>'
+                f'<div style="font-size:0.75rem; color:#666;">Avg Temp</div></div>'
+                f'<div style="text-align:center;">'
+                f'<div style="font-size:1.5rem; font-weight:700; color:#3b3b3b;">'
+                f'{best["avg_rh"]:.0f}%</div>'
+                f'<div style="font-size:0.75rem; color:#666;">Avg Humidity</div></div>'
+                f'</div>'
+                f'</div>',
+                unsafe_allow_html=True,
             )
 
-            # Detailed hourly breakdown in expander
-            with st.expander("Hourly Detail for Top Window"):
+            # Other windows (if any)
+            if len(hourly_windows) > 1:
+                st.markdown(
+                    '<div style="font-family:Lora,serif; font-size:1.1rem; '
+                    'font-weight:700; color:#3a7d34; margin:1.5rem 0 0.5rem;">'
+                    'Other Windows</div>',
+                    unsafe_allow_html=True,
+                )
+                for i, window in enumerate(hourly_windows[1:5], start=2):
+                    w_avg = window["avg_score"]
+                    if w_avg >= 80:
+                        w_color = "#4caf50"
+                        w_bg = "#e8f5e9"
+                    elif w_avg >= 60:
+                        w_color = "#f7941d"
+                        w_bg = "#fff8e1"
+                    else:
+                        w_color = "#d44a3a"
+                        w_bg = "#fce4e4"
+
+                    summary = forecast.format_hourly_window_summary(window)
+                    st.markdown(
+                        f'<div style="border-left:4px solid {w_color}; '
+                        f'padding:0.6rem 1rem; margin:0.4rem 0; '
+                        f'background:{w_bg}; border-radius:0 8px 8px 0;">'
+                        f'<div style="font-size:0.95rem; font-weight:600; '
+                        f'color:#2e7d32;">#{i}: {summary}</div></div>',
+                        unsafe_allow_html=True,
+                    )
+
+            # Hourly detail expander
+            with st.expander("Hourly Breakdown — Best Window"):
                 best_hours = best["hour_details"]
                 for h in best_hours:
                     dt = h["datetime"]
@@ -742,11 +799,22 @@ if run and location:
                         f"RH {h['relative_humidity']}%"
                         f"{caution_str}"
                     )
+
         elif hourly_windows is not None:
-            st.warning(
-                "No 3+ hour burn windows found in the next 7 days. "
-                "Individual hours may still be favorable — check the "
-                "daily outlook below for the best options."
+            # No windows found — show prominent warning
+            st.markdown(
+                '<div style="border:2px solid #d44a3a; border-radius:12px; '
+                'padding:1.5rem 2rem; margin:1rem 0; '
+                'background:linear-gradient(135deg, #fce4e4 0%, #f8d0d0 100%); '
+                'text-align:center;">'
+                '<div style="font-size:1.8rem; margin-bottom:0.5rem;">🚫</div>'
+                '<div style="font-family:Lora,serif; font-size:1.3rem; '
+                'font-weight:700; color:#c62828;">No Burn Windows Found</div>'
+                '<div style="font-size:0.9rem; color:#5a2020; margin-top:0.3rem;">'
+                'No 3+ hour favorable windows in the next 4 days. '
+                'Check the 7-day outlook below for future possibilities.</div>'
+                '</div>',
+                unsafe_allow_html=True,
             )
 
         # ══════════════════════════════════════════════════════════════════

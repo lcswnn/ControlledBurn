@@ -314,7 +314,7 @@ def evaluate_hour(hour_data, fuel_height):
     }
 
 
-def find_hourly_windows(hourly_data, fuel_height, min_hours=3):
+def find_hourly_windows(hourly_data, fuel_height, min_hours=3, max_days=4):
     """Scan hourly forecast for contiguous burn-favorable windows.
 
     Parameters
@@ -322,6 +322,7 @@ def find_hourly_windows(hourly_data, fuel_height, min_hours=3):
     hourly_data : list[dict] — output of weather.get_hourly_forecast()
     fuel_height : float
     min_hours : int — minimum consecutive favorable hours to form a window
+    max_days : int — only consider hours within the next N days (default 4)
 
     Returns
     -------
@@ -332,9 +333,13 @@ def find_hourly_windows(hourly_data, fuel_height, min_hours=3):
     if not hourly_data:
         return []
 
+    # Filter to max_days from now
+    cutoff = datetime.now() + timedelta(days=max_days)
+    filtered = [h for h in hourly_data if h["datetime"] <= cutoff]
+
     # Evaluate each hour
     evaluated = []
-    for hour in hourly_data:
+    for hour in filtered:
         result = evaluate_hour(hour, fuel_height)
         result["time"] = hour["time"]
         result["datetime"] = hour["datetime"]
