@@ -333,9 +333,10 @@ def find_hourly_windows(hourly_data, fuel_height, min_hours=3, max_days=4):
     if not hourly_data:
         return []
 
-    # Filter to max_days from now
-    cutoff = datetime.now() + timedelta(days=max_days)
-    filtered = [h for h in hourly_data if h["datetime"] <= cutoff]
+    # Filter to max_days from now, and exclude hours that have already passed
+    now = datetime.now()
+    cutoff = now + timedelta(days=max_days)
+    filtered = [h for h in hourly_data if now <= h["datetime"] <= cutoff]
 
     # Evaluate each hour
     evaluated = []
