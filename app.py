@@ -663,18 +663,27 @@ if run and location:
 
     if weekly_results:
         # ══════════════════════════════════════════════════════════════════
-        # OPTIMAL BURN WINDOWS (shown first)
+        # OPTIMAL BURN WINDOWS — hourly precision
         # ══════════════════════════════════════════════════════════════════
         st.header("Optimal Burn Windows")
         st.caption(
-            "Consecutive days with favorable conditions, ranked by average score. "
-            "Multi-day windows give you flexibility to pick the best time."
+            "Scans hourly forecasts (7am–7pm) for contiguous blocks where "
+            "all conditions pass. Minimum 3-hour window required."
         )
 
-        windows = forecast.find_optimal_windows(weekly_results, min_consecutive=1)
+        with st.spinner("Scanning hourly conditions..."):
+            try:
+                hourly_data = weather.get_hourly_forecast(lat, lon, days=7)
+                hourly_windows = forecast.find_hourly_windows(
+                    hourly_data, fuel_height, min_hours=3
+                )
+            except Exception as e:
+                st.error(f"Could not scan hourly data: {e}")
+                hourly_windows = None
 
-        if windows:
-            for i, window in enumerate(windows):
+        if hourly_windows:
+            # Show top 5 windows
+            for i, window in enumerate(hourly_windows[:5]):
                 avg = window["avg_score"]
                 if avg >= 80:
                     win_color = "#4caf50"
@@ -689,58 +698,55 @@ if run and location:
                     win_bg = "#fce4e4"
                     win_icon = "🔴"
 
-                summary = forecast.format_window_summary(window)
-                verdict_icons = " → ".join(
-                    "✅" if v == "ok" else "⚠️" for v in window["verdicts"]
-                )
-                day_names = ", ".join(
-                    d["day_label"] for d in window["day_details"]
-                )
+                summary = forecast.format_hourly_window_summary(window)
 
-                if window["days"] > 1:
-                    st.markdown(
-                        f'<div style="border-left:4px solid {win_color}; '
-                        f'padding:0.8rem 1rem; margin:0.5rem 0; '
-                        f'background:{win_bg}; '
-                        f'border-radius:0 8px 8px 0;">'
-                        f'<div style="font-size:1rem; font-weight:700; color:#2e7d32;">'
-                        f'{win_icon} Window #{i+1}: {summary}</div>'
-                        f'<div style="font-size:0.85rem; color:#555; margin-top:0.3rem;">'
-                        f'Days: {day_names} — '
-                        f'Verdicts: {verdict_icons}'
-                        f'</div></div>',
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(
-                        f'<div style="border-left:4px solid {win_color}; '
-                        f'padding:0.6rem 1rem; margin:0.5rem 0; '
-                        f'background:{win_bg}; '
-                        f'border-radius:0 8px 8px 0;">'
-                        f'<div style="font-size:1rem; font-weight:700; color:#2e7d32;">'
-                        f'{win_icon} {summary}</div></div>',
-                        unsafe_allow_html=True,
-                    )
+                st.markdown(
+                    f'<div style="border-left:4px solid {win_color}; '
+                    f'padding:0.8rem 1rem; margin:0.5rem 0; '
+                    f'background:{win_bg}; '
+                    f'border-radius:0 8px 8px 0;">'
+                    f'<div style="font-size:1rem; font-weight:700; color:#2e7d32;">'
+                    f'{win_icon} Window #{i+1}: {summary}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
 
             # Best recommendation callout
-            best_window = windows[0]
-            if best_window["days"] > 1:
-                st.info(
-                    f"**Recommended:** {best_window['start_label']} → "
-                    f"{best_window['end_label']} offers the best "
-                    f"{best_window['days']}-day burn window with an average "
-                    f"score of {best_window['avg_score']:.0f}/100."
-                )
-            else:
-                st.info(
-                    f"**Recommended:** {best_window['start_label']} is the "
-                    f"best single-day burn opportunity with a score of "
-                    f"{best_window['avg_score']:.0f}/100."
-                )
-        else:
-            st.error(
-                "No favorable burn windows found in the next 7 days. "
-                "All days have at least one failing condition."
+            best = hourly_windows[0]
+            st.info(
+                f"**Recommended:** {best['date_label']} from "
+                f"{best['start_hour']}:00–{best['end_hour'] + 1}:00 "
+                f"({best['hours']}h window) with an average score of "
+                f"{best['avg_score']:.0f}/100. "
+                f"Avg wind {best['avg_wind']} mph, "
+                f"temp {best['avg_temp']}°F, "
+                f"humidity {best['avg_rh']}%."
+            )
+
+            # Detailed hourly breakdown in expander
+            with st.expander("Hourly Detail for Top Window"):
+                best_hours = best["hour_details"]
+                for h in best_hours:
+                    dt = h["datetime"]
+                    time_label = dt.strftime("%a %I%p").replace(" 0", " ")
+                    sev_icon = "✅" if h["verdict"] == "ok" else "⚠️"
+                    caution_str = ""
+                    if h["cautions"]:
+                        caution_str = f" — ⚠️ {', '.join(h['cautions'])}"
+
+                    st.markdown(
+                        f"{sev_icon} **{time_label}** — "
+                        f"Score {h['score']}, "
+                        f"Wind {h['wind_speed_mph']} mph, "
+                        f"Temp {h['temperature_f']}°F, "
+                        f"RH {h['relative_humidity']}%"
+                        f"{caution_str}"
+                    )
+        elif hourly_windows is not None:
+            st.warning(
+                "No 3+ hour burn windows found in the next 7 days. "
+                "Individual hours may still be favorable — check the "
+                "daily outlook below for the best options."
             )
 
         # ══════════════════════════════════════════════════════════════════

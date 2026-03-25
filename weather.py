@@ -232,6 +232,11 @@ def get_weekly_forecast(lat, lon, days=7):
         ],
         "hourly": [
             "wind_direction_10m",
+            "wind_speed_10m",
+            "wind_gusts_10m",
+            "temperature_2m",
+            "relative_humidity_2m",
+            "precipitation",
             "boundary_layer_height",
             "soil_moisture_0_to_1cm",
             "soil_moisture_1_to_3cm",
@@ -327,3 +332,81 @@ def get_weekly_forecast(lat, lon, days=7):
         })
 
     return forecasts
+
+
+def get_hourly_forecast(lat, lon, days=7):
+    """Fetch full hourly forecast for burn window scanning.
+
+    Returns the raw hourly dict from the same API call used by
+    get_weekly_forecast, but structured as a list of per-hour dicts
+    that can be individually evaluated.
+
+    Only returns daylight hours (7am–7pm) since burns aren't conducted
+    at night, which cuts the data in half.
+    """
+    BASE_URL = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": [
+            "temperature_2m",
+            "relative_humidity_2m",
+            "wind_speed_10m",
+            "wind_gusts_10m",
+            "wind_direction_10m",
+            "precipitation",
+            "boundary_layer_height",
+            "soil_moisture_0_to_1cm",
+            "soil_moisture_1_to_3cm",
+            "soil_moisture_3_to_9cm",
+            "soil_moisture_9_to_27cm",
+            "soil_moisture_27_to_81cm",
+        ],
+        "forecast_days": days,
+        "wind_speed_unit": "mph",
+        "temperature_unit": "fahrenheit",
+        "precipitation_unit": "inch",
+        "timezone": "America/Chicago",
+    }
+
+    data = _fetch_with_retry(BASE_URL, params)
+    hourly = data.get("hourly", {})
+    times = hourly.get("time", [])
+
+    # Fetch AQI forecast to attach to hours
+    aqi_forecast = get_aqi_forecast(lat, lon, days=days)
+
+    hours = []
+    for i, t in enumerate(times):
+        # Parse hour — only keep daylight hours (7am–7pm)
+        try:
+            dt = datetime.strptime(t, "%Y-%m-%dT%H:%M")
+        except ValueError:
+            continue
+        if dt.hour < 7 or dt.hour > 19:
+            continue
+
+        blh = hourly.get("boundary_layer_height", [None] * len(times))[i]
+        mixing_ft = blh * 3.28084 if blh is not None else None
+
+        hours.append({
+            "time": t,
+            "datetime": dt,
+            "date": t[:10],
+            "hour": dt.hour,
+            "temperature_f": hourly.get("temperature_2m", [None] * len(times))[i],
+            "relative_humidity": hourly.get("relative_humidity_2m", [None] * len(times))[i],
+            "wind_speed_mph": hourly.get("wind_speed_10m", [None] * len(times))[i],
+            "wind_gusts_mph": hourly.get("wind_gusts_10m", [None] * len(times))[i],
+            "wind_direction_deg": hourly.get("wind_direction_10m", [None] * len(times))[i],
+            "precipitation_in": hourly.get("precipitation", [None] * len(times))[i],
+            "mixing_height_ft": mixing_ft,
+            "soil_moisture_0_to_1cm": hourly.get("soil_moisture_0_to_1cm", [None] * len(times))[i],
+            "soil_moisture_1_to_3cm": hourly.get("soil_moisture_1_to_3cm", [None] * len(times))[i],
+            "soil_moisture_3_to_9cm": hourly.get("soil_moisture_3_to_9cm", [None] * len(times))[i],
+            "soil_moisture_9_to_27cm": hourly.get("soil_moisture_9_to_27cm", [None] * len(times))[i],
+            "soil_moisture_27_to_81cm": hourly.get("soil_moisture_27_to_81cm", [None] * len(times))[i],
+            "us_aqi": aqi_forecast.get(t[:10]),
+        })
+
+    return hours

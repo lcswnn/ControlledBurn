@@ -237,3 +237,165 @@ def format_window_summary(window):
         f"Avg Score: {window['avg_score']:.0f}/100, "
         f"Range: {window['min_score']}–{window['max_score']}"
     )
+
+
+# ── Hourly Burn Window Scanner ───────────────────────────────────────────────
+
+def evaluate_hour(hour_data, fuel_height):
+    """Run critical condition checks against a single hour's data.
+
+    Returns (verdict, score, failed_checks) where verdict is
+    'ok', 'caution', or 'fail'.
+    """
+    ws = hour_data.get("wind_speed_mph") or 0
+    wg = hour_data.get("wind_gusts_mph") or ws
+    wd = hour_data.get("wind_direction_deg") or 0
+    rh = hour_data.get("relative_humidity") or 0
+    temp = hour_data.get("temperature_f") or 0
+    precip = hour_data.get("precipitation_in") or 0
+    mixing = hour_data.get("mixing_height_ft")
+    aqi = hour_data.get("us_aqi")
+
+    checks = []
+
+    # Wind
+    cond_wind = conditions.check_wind(ws, wg, wd, None)
+    checks.append(("Wind", cond_wind))
+
+    # Humidity
+    cond_hum = conditions.check_humidity(rh, fuel_height)
+    checks.append(("Humidity", cond_hum))
+
+    # Temperature
+    cond_temp = conditions.check_temp(temp, fuel_height)
+    checks.append(("Temperature", cond_temp))
+
+    # AQI
+    cond_aqi = conditions.check_aqi(aqi)
+    checks.append(("Air Quality", cond_aqi))
+
+    # Smoke dispersal (if mixing height available)
+    if mixing is not None:
+        cond_smoke = conditions.check_smoke_dispersal(mixing, ws)
+        checks.append(("Smoke Dispersal", cond_smoke))
+
+    # Precipitation (hourly)
+    if precip > 0.1:
+        checks.append(("Precipitation", (False, "fail", f"Rain ({precip:.2f}\"/hr).")))
+    elif precip > 0.02:
+        checks.append(("Precipitation", (True, "caution", f"Light rain ({precip:.2f}\"/hr).")))
+
+    # Use tiered verdict
+    verdict = conditions.determine_verdict(checks)
+
+    # Simple score
+    score = 100
+    for label, (_, sev, _) in checks:
+        if sev == "fail":
+            score -= 20
+        elif sev == "caution":
+            score -= 8
+    score = max(0, min(100, score))
+
+    failed = [label for label, (_, sev, _) in checks if sev == "fail"]
+    cautions = [label for label, (_, sev, _) in checks if sev == "caution"]
+
+    return {
+        "verdict": verdict,
+        "score": score,
+        "failed": failed,
+        "cautions": cautions,
+        "checks": checks,
+        "wind_speed_mph": ws,
+        "wind_gusts_mph": wg,
+        "temperature_f": temp,
+        "relative_humidity": rh,
+        "us_aqi": aqi,
+    }
+
+
+def find_hourly_windows(hourly_data, fuel_height, min_hours=3):
+    """Scan hourly forecast for contiguous burn-favorable windows.
+
+    Parameters
+    ----------
+    hourly_data : list[dict] — output of weather.get_hourly_forecast()
+    fuel_height : float
+    min_hours : int — minimum consecutive favorable hours to form a window
+
+    Returns
+    -------
+    list[dict] with keys:
+        start_time, end_time, start_label, end_label, hours (int),
+        avg_score, min_score, date, hour_details (list[dict])
+    """
+    if not hourly_data:
+        return []
+
+    # Evaluate each hour
+    evaluated = []
+    for hour in hourly_data:
+        result = evaluate_hour(hour, fuel_height)
+        result["time"] = hour["time"]
+        result["datetime"] = hour["datetime"]
+        result["date"] = hour["date"]
+        result["hour"] = hour["hour"]
+        evaluated.append(result)
+
+    # Find consecutive non-fail streaks
+    windows = []
+    current_streak = []
+
+    for hour in evaluated:
+        if hour["verdict"] != "fail":
+            current_streak.append(hour)
+        else:
+            if len(current_streak) >= min_hours:
+                windows.append(current_streak)
+            current_streak = []
+
+    if len(current_streak) >= min_hours:
+        windows.append(current_streak)
+
+    # Build window summaries
+    results = []
+    for streak in windows:
+        scores = [h["score"] for h in streak]
+        start_dt = streak[0]["datetime"]
+        end_dt = streak[-1]["datetime"]
+
+        results.append({
+            "start_time": streak[0]["time"],
+            "end_time": streak[-1]["time"],
+            "start_label": start_dt.strftime("%a %m/%d %I%p").replace(" 0", " "),
+            "end_label": end_dt.strftime("%I%p").lstrip("0"),
+            "date": streak[0]["date"],
+            "date_label": start_dt.strftime("%a %m/%d"),
+            "start_hour": streak[0]["hour"],
+            "end_hour": streak[-1]["hour"],
+            "hours": len(streak),
+            "avg_score": round(sum(scores) / len(scores), 1),
+            "min_score": min(scores),
+            "max_score": max(scores),
+            "avg_wind": round(sum(h["wind_speed_mph"] for h in streak) / len(streak), 1),
+            "avg_temp": round(sum(h["temperature_f"] for h in streak) / len(streak), 1),
+            "avg_rh": round(sum(h["relative_humidity"] for h in streak) / len(streak), 1),
+            "hour_details": streak,
+        })
+
+    # Sort by avg_score descending
+    results.sort(key=lambda w: w["avg_score"], reverse=True)
+    return results
+
+
+def format_hourly_window_summary(window):
+    """Return a human-readable string for an hourly burn window."""
+    return (
+        f"{window['date_label']} {window['start_hour']}:00–"
+        f"{window['end_hour'] + 1}:00 "
+        f"({window['hours']}h) — "
+        f"Score: {window['avg_score']:.0f}/100, "
+        f"Wind {window['avg_wind']}mph, "
+        f"Temp {window['avg_temp']}°F, "
+        f"RH {window['avg_rh']}%"
+    )
